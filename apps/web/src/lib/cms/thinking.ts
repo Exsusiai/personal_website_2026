@@ -40,9 +40,9 @@ export async function listThinking(opts: ListThinkingOpts = {}): Promise<Article
   }
 
   const resp = await withRetry(() =>
-    client.databases.query({
-      database_id: getEnv().NOTION_DB_THINKING,
-      filter: { and: andFilters },
+    client.dataSources.query({
+      data_source_id: getEnv().NOTION_DB_THINKING,
+      filter: { and: andFilters } as never,
       sorts: [{ property: 'PublishedDate', direction: 'descending' }],
       page_size: opts.limit ?? 100,
     }),
@@ -58,14 +58,14 @@ export async function listThinking(opts: ListThinkingOpts = {}): Promise<Article
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   const client = getNotionClient();
   const resp = await withRetry(() =>
-    client.databases.query({
-      database_id: getEnv().NOTION_DB_THINKING,
+    client.dataSources.query({
+      data_source_id: getEnv().NOTION_DB_THINKING,
       filter: {
         and: [
           { property: 'Slug', rich_text: { equals: slug } },
           { property: 'Published', checkbox: { equals: true } },
         ],
-      },
+      } as never,
       page_size: 1,
     }),
   );

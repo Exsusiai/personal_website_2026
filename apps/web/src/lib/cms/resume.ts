@@ -53,8 +53,8 @@ export async function getResume(): Promise<ResumeBundle> {
 
   do {
     const resp = await withRetry(() =>
-      client.databases.query({
-        database_id: getEnv().NOTION_DB_RESUME,
+      client.dataSources.query({
+        data_source_id: getEnv().NOTION_DB_RESUME,
         start_cursor: cursor,
         page_size: 100,
       }),

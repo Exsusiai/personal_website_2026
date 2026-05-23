@@ -48,8 +48,8 @@ export async function getUses(): Promise<UsesGrouped> {
 
   do {
     const resp = await withRetry(() =>
-      client.databases.query({
-        database_id: getEnv().NOTION_DB_USES,
+      client.dataSources.query({
+        data_source_id: getEnv().NOTION_DB_USES,
         start_cursor: cursor,
         page_size: 100,
       }),

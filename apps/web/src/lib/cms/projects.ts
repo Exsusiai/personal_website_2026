@@ -51,9 +51,9 @@ export async function listProjects(opts: ListProjectsOpts = {}): Promise<Project
   }
 
   const resp = await withRetry(() =>
-    client.databases.query({
-      database_id: getEnv().NOTION_DB_PROJECTS,
-      filter,
+    client.dataSources.query({
+      data_source_id: getEnv().NOTION_DB_PROJECTS,
+      filter: filter as never,
       sorts: [{ property: 'Order', direction: 'ascending' }],
       page_size: opts.limit ?? 100,
     }),
@@ -69,14 +69,14 @@ export async function listProjects(opts: ListProjectsOpts = {}): Promise<Project
 export async function getProjectBySlug(slug: string): Promise<Project | null> {
   const client = getNotionClient();
   const resp = await withRetry(() =>
-    client.databases.query({
-      database_id: getEnv().NOTION_DB_PROJECTS,
+    client.dataSources.query({
+      data_source_id: getEnv().NOTION_DB_PROJECTS,
       filter: {
         and: [
           { property: 'Slug', rich_text: { equals: slug } },
           { property: 'Published', checkbox: { equals: true } },
         ],
-      },
+      } as never,
       page_size: 1,
     }),
   );
