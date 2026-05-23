@@ -4,7 +4,7 @@ Jason Chen (陈敬升) 的个人门户。
 
 ## Tech Stack
 
-- Next.js 15 (App Router) + React 19 + TypeScript 5
+- Next.js 16 (App Router) + React 19 + TypeScript 5
 - Tailwind CSS v4
 - Notion as CMS (Phase 2)
 - Supabase Postgres + Cloudflare R2 (Phase 4+)
@@ -17,7 +17,7 @@ pnpm install
 pnpm dev
 ```
 
-打开 http://localhost:3000
+打开 <http://localhost:3000>
 
 ## Docs
 
