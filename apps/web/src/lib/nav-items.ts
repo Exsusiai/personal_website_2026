@@ -1,3 +1,5 @@
+import { site } from './site';
+
 export interface NavItem {
   href: string;
   label: string;
@@ -14,8 +16,8 @@ export const navItems: NavItem[] = [
 ];
 
 export const footerLinks: NavItem[] = [
-  { href: 'mailto:chjingsheng@gmail.com', label: 'Email' },
-  { href: 'https://github.com/chjingsheng', label: 'GitHub' },
+  { href: `mailto:${site.email}`, label: 'Email' },
+  { href: site.github, label: 'GitHub' },
   { href: '/hire-me', label: 'Hire me' },
   { href: '/uses', label: 'Uses' },
 ];
