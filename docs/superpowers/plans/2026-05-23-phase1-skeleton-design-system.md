@@ -30,50 +30,51 @@ personal_website_new/
 │       └── plans/
 └── apps/
     └── web/
-        ├── app/
-        │   ├── globals.css               # Nordic 设计 token + base 样式
-        │   ├── layout.tsx                # 根 layout：字体 + Nav + Footer
-        │   ├── page.tsx                  # 首页（完整版，符合 mockup）
-        │   ├── not-found.tsx
-        │   ├── about/page.tsx            # 占位
-        │   ├── resume/page.tsx           # 占位
-        │   ├── projects/
-        │   │   ├── page.tsx              # 占位
-        │   │   └── [slug]/page.tsx       # 占位
-        │   ├── thinking/
-        │   │   ├── page.tsx              # 占位
-        │   │   └── [slug]/page.tsx       # 占位
-        │   ├── timeline/page.tsx         # 占位
-        │   ├── now/page.tsx              # 占位
-        │   ├── uses/page.tsx             # 占位
-        │   ├── tokens/page.tsx           # 占位
-        │   └── hire-me/page.tsx          # 占位
-        ├── components/
-        │   ├── ui/
-        │   │   ├── container.tsx         # 内容居中容器
-        │   │   └── section-head.tsx      # h2 + "VIEW ALL →"
-        │   ├── nav/
-        │   │   ├── top-nav.tsx
-        │   │   ├── top-nav.test.tsx
-        │   │   ├── footer.tsx
-        │   │   └── footer.test.tsx
-        │   ├── home/
-        │   │   ├── hero.tsx
-        │   │   ├── featured-projects.tsx
-        │   │   ├── project-card.tsx
-        │   │   ├── project-card.test.tsx
-        │   │   ├── now-block.tsx
-        │   │   ├── token-preview.tsx
-        │   │   └── thinking-list.tsx
-        │   └── placeholder/
-        │       └── coming-soon.tsx
-        ├── lib/
-        │   ├── fonts.ts                  # next/font 配置
-        │   ├── nav-items.ts              # 顶部导航的链接列表
-        │   └── site.ts                   # 站点元信息常量
+        ├── src/                          # Next.js 16 默认 src/ 结构
+        │   ├── app/
+        │   │   ├── globals.css           # Nordic 设计 token + base 样式
+        │   │   ├── layout.tsx            # 根 layout：字体 + Nav + Footer
+        │   │   ├── page.tsx              # 首页（完整版，符合 mockup）
+        │   │   ├── not-found.tsx
+        │   │   ├── about/page.tsx        # 占位
+        │   │   ├── resume/page.tsx       # 占位
+        │   │   ├── projects/
+        │   │   │   ├── page.tsx          # 占位
+        │   │   │   └── [slug]/page.tsx   # 占位
+        │   │   ├── thinking/
+        │   │   │   ├── page.tsx          # 占位
+        │   │   │   └── [slug]/page.tsx   # 占位
+        │   │   ├── timeline/page.tsx     # 占位
+        │   │   ├── now/page.tsx          # 占位
+        │   │   ├── uses/page.tsx         # 占位
+        │   │   ├── tokens/page.tsx       # 占位
+        │   │   └── hire-me/page.tsx      # 占位
+        │   ├── components/
+        │   │   ├── ui/
+        │   │   │   ├── container.tsx     # 内容居中容器
+        │   │   │   └── section-head.tsx  # h2 + "VIEW ALL →"
+        │   │   ├── nav/
+        │   │   │   ├── top-nav.tsx
+        │   │   │   ├── top-nav.test.tsx
+        │   │   │   ├── footer.tsx
+        │   │   │   └── footer.test.tsx
+        │   │   ├── home/
+        │   │   │   ├── hero.tsx
+        │   │   │   ├── featured-projects.tsx
+        │   │   │   ├── project-card.tsx
+        │   │   │   ├── project-card.test.tsx
+        │   │   │   ├── now-block.tsx
+        │   │   │   ├── token-preview.tsx
+        │   │   │   └── thinking-list.tsx
+        │   │   └── placeholder/
+        │   │       └── coming-soon.tsx
+        │   └── lib/
+        │       ├── fonts.ts              # next/font 配置
+        │       ├── nav-items.ts          # 顶部导航的链接列表
+        │       └── site.ts               # 站点元信息常量
         ├── public/
         │   └── favicon.ico
-        ├── tests/
+        ├── tests/                        # vitest setup（在 src/ 之外）
         │   └── setup.ts
         ├── next.config.ts
         ├── tsconfig.json
@@ -82,6 +83,8 @@ personal_website_new/
         ├── eslint.config.mjs
         └── package.json
 ```
+
+> **环境备注（Batch 1 实测）**：实际使用 Next.js **16.2.6** + Tailwind v4.3 + React 19.2 + TypeScript 5.9。Next.js 16 与 spec 中 15.x 的所有用法兼容；scaffold 强制把 `app/` `components/` `lib/` 放进 `src/` 目录，`@/` alias 映射到 `./src/`。本节路径以此为准。
 
 ---
 
@@ -474,11 +477,11 @@ git commit -m "test: configure vitest + React Testing Library"
 ## Task 5: Define Nordic color tokens in globals.css
 
 **Files:**
-- Modify: `apps/web/app/globals.css`
+- Modify: `apps/web/src/app/globals.css`
 
 - [ ] **Step 1: Replace globals.css with Nordic tokens**
 
-Replace **entire contents** of `apps/web/app/globals.css` with:
+Replace **entire contents** of `apps/web/src/app/globals.css` with:
 
 ```css
 @import "tailwindcss";
@@ -627,7 +630,7 @@ Stop server.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/web/app/globals.css
+git add apps/web/src/app/globals.css
 git commit -m "feat(design): add Nordic color tokens and base styles"
 ```
 
@@ -636,7 +639,7 @@ git commit -m "feat(design): add Nordic color tokens and base styles"
 ## Task 6: Configure fonts via next/font
 
 **Files:**
-- Create: `apps/web/lib/fonts.ts`
+- Create: `apps/web/src/lib/fonts.ts`
 
 - [ ] **Step 1: Create lib/fonts.ts**
 
@@ -686,11 +689,11 @@ export const fontClassNames = [
 ].join(' ');
 ```
 
-Save as `apps/web/lib/fonts.ts`.
+Save as `apps/web/src/lib/fonts.ts`.
 
 - [ ] **Step 2: Wire fonts into root layout**
 
-Open `apps/web/app/layout.tsx`. Replace **entire contents** with:
+Open `apps/web/src/app/layout.tsx`. Replace **entire contents** with:
 
 ```tsx
 import type { Metadata } from 'next';
@@ -731,7 +734,7 @@ Stop server.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/lib/fonts.ts apps/web/app/layout.tsx
+git add apps/web/src/lib/fonts.ts apps/web/src/app/layout.tsx
 git commit -m "feat(design): wire next/font for Inter, Noto SC, JetBrains Mono"
 ```
 
@@ -740,14 +743,14 @@ git commit -m "feat(design): wire next/font for Inter, Noto SC, JetBrains Mono"
 ## Task 7: Build utility helpers (lib/utils.ts, lib/site.ts, lib/nav-items.ts)
 
 **Files:**
-- Create: `apps/web/lib/utils.ts`
-- Create: `apps/web/lib/site.ts`
-- Create: `apps/web/lib/nav-items.ts`
-- Create: `apps/web/lib/utils.test.ts`
+- Create: `apps/web/src/lib/utils.ts`
+- Create: `apps/web/src/lib/site.ts`
+- Create: `apps/web/src/lib/nav-items.ts`
+- Create: `apps/web/src/lib/utils.test.ts`
 
 - [ ] **Step 1: Write failing test for `cn` utility**
 
-Create `apps/web/lib/utils.test.ts`:
+Create `apps/web/src/lib/utils.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -776,7 +779,7 @@ Expected: FAIL — `cn` not exported from `./utils`.
 
 - [ ] **Step 3: Implement utils.ts**
 
-Create `apps/web/lib/utils.ts`:
+Create `apps/web/src/lib/utils.ts`:
 
 ```ts
 import { clsx, type ClassValue } from 'clsx';
@@ -810,7 +813,7 @@ export const site = {
 } as const;
 ```
 
-Save as `apps/web/lib/site.ts`.
+Save as `apps/web/src/lib/site.ts`.
 
 - [ ] **Step 6: Create nav-items.ts**
 
@@ -838,12 +841,12 @@ export const footerLinks: NavItem[] = [
 ];
 ```
 
-Save as `apps/web/lib/nav-items.ts`.
+Save as `apps/web/src/lib/nav-items.ts`.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web/lib/
+git add apps/web/src/lib/
 git commit -m "feat(lib): add cn utility, site metadata, nav items"
 ```
 
@@ -852,7 +855,7 @@ git commit -m "feat(lib): add cn utility, site metadata, nav items"
 ## Task 8: Build Container component
 
 **Files:**
-- Create: `apps/web/components/ui/container.tsx`
+- Create: `apps/web/src/components/ui/container.tsx`
 
 - [ ] **Step 1: Implement Container**
 
@@ -884,12 +887,12 @@ export function Container({
 }
 ```
 
-Save as `apps/web/components/ui/container.tsx`.
+Save as `apps/web/src/components/ui/container.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/components/ui/container.tsx
+git add apps/web/src/components/ui/container.tsx
 git commit -m "feat(ui): add Container component"
 ```
 
@@ -898,8 +901,8 @@ git commit -m "feat(ui): add Container component"
 ## Task 9: Build TopNav component (with test)
 
 **Files:**
-- Create: `apps/web/components/nav/top-nav.tsx`
-- Create: `apps/web/components/nav/top-nav.test.tsx`
+- Create: `apps/web/src/components/nav/top-nav.tsx`
+- Create: `apps/web/src/components/nav/top-nav.test.tsx`
 
 - [ ] **Step 1: Implement TopNav**
 
@@ -941,11 +944,11 @@ export function TopNav() {
 }
 ```
 
-Save as `apps/web/components/nav/top-nav.tsx`.
+Save as `apps/web/src/components/nav/top-nav.tsx`.
 
 - [ ] **Step 2: Write smoke test**
 
-Create `apps/web/components/nav/top-nav.test.tsx`:
+Create `apps/web/src/components/nav/top-nav.test.tsx`:
 
 ```tsx
 import { describe, it, expect } from 'vitest';
@@ -982,7 +985,7 @@ Expected: 3 tests pass for TopNav, plus the prior sanity + utils tests.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/components/nav/top-nav.tsx apps/web/components/nav/top-nav.test.tsx
+git add apps/web/src/components/nav/top-nav.tsx apps/web/src/components/nav/top-nav.test.tsx
 git commit -m "feat(nav): add TopNav component with tests"
 ```
 
@@ -991,8 +994,8 @@ git commit -m "feat(nav): add TopNav component with tests"
 ## Task 10: Build Footer component (with test)
 
 **Files:**
-- Create: `apps/web/components/nav/footer.tsx`
-- Create: `apps/web/components/nav/footer.test.tsx`
+- Create: `apps/web/src/components/nav/footer.tsx`
+- Create: `apps/web/src/components/nav/footer.test.tsx`
 
 - [ ] **Step 1: Implement Footer**
 
@@ -1023,7 +1026,7 @@ export function Footer() {
 }
 ```
 
-Save as `apps/web/components/nav/footer.tsx`.
+Save as `apps/web/src/components/nav/footer.tsx`.
 
 - [ ] **Step 2: Write smoke test**
 
@@ -1052,7 +1055,7 @@ describe('Footer', () => {
 });
 ```
 
-Save as `apps/web/components/nav/footer.test.tsx`.
+Save as `apps/web/src/components/nav/footer.test.tsx`.
 
 - [ ] **Step 3: Run test, verify pass**
 
@@ -1063,7 +1066,7 @@ Expected: 3 new Footer tests pass.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/components/nav/footer.tsx apps/web/components/nav/footer.test.tsx
+git add apps/web/src/components/nav/footer.tsx apps/web/src/components/nav/footer.test.tsx
 git commit -m "feat(nav): add Footer component with tests"
 ```
 
@@ -1072,11 +1075,11 @@ git commit -m "feat(nav): add Footer component with tests"
 ## Task 11: Update root layout to include Nav + Footer
 
 **Files:**
-- Modify: `apps/web/app/layout.tsx`
+- Modify: `apps/web/src/app/layout.tsx`
 
 - [ ] **Step 1: Update layout.tsx**
 
-Replace **entire contents** of `apps/web/app/layout.tsx` with:
+Replace **entire contents** of `apps/web/src/app/layout.tsx` with:
 
 ```tsx
 import type { Metadata } from 'next';
@@ -1137,7 +1140,7 @@ Stop server.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/web/app/layout.tsx
+git add apps/web/src/app/layout.tsx
 git commit -m "feat(layout): wire TopNav and Footer into root layout"
 ```
 
@@ -1146,7 +1149,7 @@ git commit -m "feat(layout): wire TopNav and Footer into root layout"
 ## Task 12: Build SectionHead component
 
 **Files:**
-- Create: `apps/web/components/ui/section-head.tsx`
+- Create: `apps/web/src/components/ui/section-head.tsx`
 
 - [ ] **Step 1: Implement SectionHead**
 
@@ -1199,12 +1202,12 @@ export function SectionHead({
 }
 ```
 
-Save as `apps/web/components/ui/section-head.tsx`.
+Save as `apps/web/src/components/ui/section-head.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/components/ui/section-head.tsx
+git add apps/web/src/components/ui/section-head.tsx
 git commit -m "feat(ui): add SectionHead component"
 ```
 
@@ -1213,7 +1216,7 @@ git commit -m "feat(ui): add SectionHead component"
 ## Task 13: Build Hero component
 
 **Files:**
-- Create: `apps/web/components/home/hero.tsx`
+- Create: `apps/web/src/components/home/hero.tsx`
 
 - [ ] **Step 1: Implement Hero**
 
@@ -1256,12 +1259,12 @@ export function Hero() {
 }
 ```
 
-Save as `apps/web/components/home/hero.tsx`.
+Save as `apps/web/src/components/home/hero.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/components/home/hero.tsx
+git add apps/web/src/components/home/hero.tsx
 git commit -m "feat(home): add Hero section"
 ```
 
@@ -1270,8 +1273,8 @@ git commit -m "feat(home): add Hero section"
 ## Task 14: Build ProjectCard component (with test)
 
 **Files:**
-- Create: `apps/web/components/home/project-card.tsx`
-- Create: `apps/web/components/home/project-card.test.tsx`
+- Create: `apps/web/src/components/home/project-card.tsx`
+- Create: `apps/web/src/components/home/project-card.test.tsx`
 
 - [ ] **Step 1: Implement ProjectCard**
 
@@ -1325,7 +1328,7 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
 }
 ```
 
-Save as `apps/web/components/home/project-card.tsx`.
+Save as `apps/web/src/components/home/project-card.tsx`.
 
 - [ ] **Step 2: Write smoke test**
 
@@ -1364,7 +1367,7 @@ describe('ProjectCard', () => {
 });
 ```
 
-Save as `apps/web/components/home/project-card.test.tsx`.
+Save as `apps/web/src/components/home/project-card.test.tsx`.
 
 - [ ] **Step 3: Run test, verify pass**
 
@@ -1375,7 +1378,7 @@ Expected: 3 new ProjectCard tests pass.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/components/home/project-card.tsx apps/web/components/home/project-card.test.tsx
+git add apps/web/src/components/home/project-card.tsx apps/web/src/components/home/project-card.test.tsx
 git commit -m "feat(home): add ProjectCard component with tests"
 ```
 
@@ -1384,7 +1387,7 @@ git commit -m "feat(home): add ProjectCard component with tests"
 ## Task 15: Build FeaturedProjects section
 
 **Files:**
-- Create: `apps/web/components/home/featured-projects.tsx`
+- Create: `apps/web/src/components/home/featured-projects.tsx`
 
 - [ ] **Step 1: Implement FeaturedProjects (with Phase 1 hardcoded data)**
 
@@ -1437,12 +1440,12 @@ export function FeaturedProjects() {
 }
 ```
 
-Save as `apps/web/components/home/featured-projects.tsx`.
+Save as `apps/web/src/components/home/featured-projects.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/components/home/featured-projects.tsx
+git add apps/web/src/components/home/featured-projects.tsx
 git commit -m "feat(home): add FeaturedProjects section with Phase 1 placeholder data"
 ```
 
@@ -1451,9 +1454,9 @@ git commit -m "feat(home): add FeaturedProjects section with Phase 1 placeholder
 ## Task 16: Build NowBlock + TokenPreview (the duo)
 
 **Files:**
-- Create: `apps/web/components/home/now-block.tsx`
-- Create: `apps/web/components/home/token-preview.tsx`
-- Create: `apps/web/components/home/now-tokens-duo.tsx`
+- Create: `apps/web/src/components/home/now-block.tsx`
+- Create: `apps/web/src/components/home/token-preview.tsx`
+- Create: `apps/web/src/components/home/now-tokens-duo.tsx`
 
 - [ ] **Step 1: Implement NowBlock**
 
@@ -1483,7 +1486,7 @@ export function NowBlock() {
 }
 ```
 
-Save as `apps/web/components/home/now-block.tsx`.
+Save as `apps/web/src/components/home/now-block.tsx`.
 
 - [ ] **Step 2: Implement TokenPreview**
 
@@ -1562,7 +1565,7 @@ export function TokenPreview() {
 }
 ```
 
-Save as `apps/web/components/home/token-preview.tsx`.
+Save as `apps/web/src/components/home/token-preview.tsx`.
 
 - [ ] **Step 3: Combine into NowTokensDuo**
 
@@ -1585,12 +1588,12 @@ export function NowTokensDuo() {
 }
 ```
 
-Save as `apps/web/components/home/now-tokens-duo.tsx`.
+Save as `apps/web/src/components/home/now-tokens-duo.tsx`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/components/home/now-block.tsx apps/web/components/home/token-preview.tsx apps/web/components/home/now-tokens-duo.tsx
+git add apps/web/src/components/home/now-block.tsx apps/web/src/components/home/token-preview.tsx apps/web/src/components/home/now-tokens-duo.tsx
 git commit -m "feat(home): add Now block and Token preview duo"
 ```
 
@@ -1599,7 +1602,7 @@ git commit -m "feat(home): add Now block and Token preview duo"
 ## Task 17: Build ThinkingList section
 
 **Files:**
-- Create: `apps/web/components/home/thinking-list.tsx`
+- Create: `apps/web/src/components/home/thinking-list.tsx`
 
 - [ ] **Step 1: Implement ThinkingList (Phase 1 hardcoded)**
 
@@ -1680,12 +1683,12 @@ export function ThinkingList() {
 }
 ```
 
-Save as `apps/web/components/home/thinking-list.tsx`.
+Save as `apps/web/src/components/home/thinking-list.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/components/home/thinking-list.tsx
+git add apps/web/src/components/home/thinking-list.tsx
 git commit -m "feat(home): add Thinking list section"
 ```
 
@@ -1694,11 +1697,11 @@ git commit -m "feat(home): add Thinking list section"
 ## Task 18: Assemble homepage (page.tsx)
 
 **Files:**
-- Modify: `apps/web/app/page.tsx`
+- Modify: `apps/web/src/app/page.tsx`
 
 - [ ] **Step 1: Replace page.tsx entirely**
 
-Replace **entire contents** of `apps/web/app/page.tsx` with:
+Replace **entire contents** of `apps/web/src/app/page.tsx` with:
 
 ```tsx
 import { Hero } from '@/components/home/hero';
@@ -1745,7 +1748,7 @@ Expected: All tests green (sanity + utils + TopNav + Footer + ProjectCard).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/app/page.tsx
+git add apps/web/src/app/page.tsx
 git commit -m "feat(home): assemble homepage matching approved mockup"
 ```
 
@@ -1754,7 +1757,7 @@ git commit -m "feat(home): assemble homepage matching approved mockup"
 ## Task 19: Build ComingSoon placeholder component
 
 **Files:**
-- Create: `apps/web/components/placeholder/coming-soon.tsx`
+- Create: `apps/web/src/components/placeholder/coming-soon.tsx`
 
 - [ ] **Step 1: Implement ComingSoon**
 
@@ -1788,12 +1791,12 @@ export function ComingSoon({ titleEn, titleZh, description }: ComingSoonProps) {
 }
 ```
 
-Save as `apps/web/components/placeholder/coming-soon.tsx`.
+Save as `apps/web/src/components/placeholder/coming-soon.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/components/placeholder/coming-soon.tsx
+git add apps/web/src/components/placeholder/coming-soon.tsx
 git commit -m "feat(placeholder): add ComingSoon component for Phase 1 stubs"
 ```
 
@@ -1802,7 +1805,7 @@ git commit -m "feat(placeholder): add ComingSoon component for Phase 1 stubs"
 ## Task 20: Stub /about page
 
 **Files:**
-- Create: `apps/web/app/about/page.tsx`
+- Create: `apps/web/src/app/about/page.tsx`
 
 - [ ] **Step 1: Implement**
 
@@ -1826,7 +1829,7 @@ export default function AboutPage() {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/app/about/page.tsx
+git add apps/web/src/app/about/page.tsx
 git commit -m "feat(routes): stub /about page"
 ```
 
@@ -1835,7 +1838,7 @@ git commit -m "feat(routes): stub /about page"
 ## Task 21: Stub /resume page
 
 **Files:**
-- Create: `apps/web/app/resume/page.tsx`
+- Create: `apps/web/src/app/resume/page.tsx`
 
 - [ ] **Step 1: Implement**
 
@@ -1859,7 +1862,7 @@ export default function ResumePage() {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/app/resume/page.tsx
+git add apps/web/src/app/resume/page.tsx
 git commit -m "feat(routes): stub /resume page"
 ```
 
@@ -1868,8 +1871,8 @@ git commit -m "feat(routes): stub /resume page"
 ## Task 22: Stub /projects list + detail pages
 
 **Files:**
-- Create: `apps/web/app/projects/page.tsx`
-- Create: `apps/web/app/projects/[slug]/page.tsx`
+- Create: `apps/web/src/app/projects/page.tsx`
+- Create: `apps/web/src/app/projects/[slug]/page.tsx`
 
 - [ ] **Step 1: List page**
 
@@ -1890,7 +1893,7 @@ export default function ProjectsPage() {
 }
 ```
 
-Save as `apps/web/app/projects/page.tsx`.
+Save as `apps/web/src/app/projects/page.tsx`.
 
 - [ ] **Step 2: Detail page (with dynamic slug)**
 
@@ -1919,12 +1922,12 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 }
 ```
 
-Save as `apps/web/app/projects/[slug]/page.tsx`.
+Save as `apps/web/src/app/projects/[slug]/page.tsx`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/web/app/projects/
+git add apps/web/src/app/projects/
 git commit -m "feat(routes): stub /projects list and [slug] detail pages"
 ```
 
@@ -1933,8 +1936,8 @@ git commit -m "feat(routes): stub /projects list and [slug] detail pages"
 ## Task 23: Stub /thinking list + detail pages
 
 **Files:**
-- Create: `apps/web/app/thinking/page.tsx`
-- Create: `apps/web/app/thinking/[slug]/page.tsx`
+- Create: `apps/web/src/app/thinking/page.tsx`
+- Create: `apps/web/src/app/thinking/[slug]/page.tsx`
 
 - [ ] **Step 1: List page**
 
@@ -1955,7 +1958,7 @@ export default function ThinkingPage() {
 }
 ```
 
-Save as `apps/web/app/thinking/page.tsx`.
+Save as `apps/web/src/app/thinking/page.tsx`.
 
 - [ ] **Step 2: Detail page**
 
@@ -1984,12 +1987,12 @@ export default async function ThinkingDetailPage({ params }: PageProps) {
 }
 ```
 
-Save as `apps/web/app/thinking/[slug]/page.tsx`.
+Save as `apps/web/src/app/thinking/[slug]/page.tsx`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/web/app/thinking/
+git add apps/web/src/app/thinking/
 git commit -m "feat(routes): stub /thinking list and [slug] detail pages"
 ```
 
@@ -1998,11 +2001,11 @@ git commit -m "feat(routes): stub /thinking list and [slug] detail pages"
 ## Task 24: Stub /timeline /now /uses /tokens /hire-me
 
 **Files:**
-- Create: `apps/web/app/timeline/page.tsx`
-- Create: `apps/web/app/now/page.tsx`
-- Create: `apps/web/app/uses/page.tsx`
-- Create: `apps/web/app/tokens/page.tsx`
-- Create: `apps/web/app/hire-me/page.tsx`
+- Create: `apps/web/src/app/timeline/page.tsx`
+- Create: `apps/web/src/app/now/page.tsx`
+- Create: `apps/web/src/app/uses/page.tsx`
+- Create: `apps/web/src/app/tokens/page.tsx`
+- Create: `apps/web/src/app/hire-me/page.tsx`
 
 - [ ] **Step 1: /timeline**
 
@@ -2023,7 +2026,7 @@ export default function TimelinePage() {
 }
 ```
 
-Save as `apps/web/app/timeline/page.tsx`.
+Save as `apps/web/src/app/timeline/page.tsx`.
 
 - [ ] **Step 2: /now**
 
@@ -2044,7 +2047,7 @@ export default function NowPage() {
 }
 ```
 
-Save as `apps/web/app/now/page.tsx`.
+Save as `apps/web/src/app/now/page.tsx`.
 
 - [ ] **Step 3: /uses**
 
@@ -2065,7 +2068,7 @@ export default function UsesPage() {
 }
 ```
 
-Save as `apps/web/app/uses/page.tsx`.
+Save as `apps/web/src/app/uses/page.tsx`.
 
 - [ ] **Step 4: /tokens**
 
@@ -2086,7 +2089,7 @@ export default function TokensPage() {
 }
 ```
 
-Save as `apps/web/app/tokens/page.tsx`.
+Save as `apps/web/src/app/tokens/page.tsx`.
 
 - [ ] **Step 5: /hire-me**
 
@@ -2107,12 +2110,12 @@ export default function HireMePage() {
 }
 ```
 
-Save as `apps/web/app/hire-me/page.tsx`.
+Save as `apps/web/src/app/hire-me/page.tsx`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/web/app/timeline apps/web/app/now apps/web/app/uses apps/web/app/tokens apps/web/app/hire-me
+git add apps/web/src/app/timeline apps/web/src/app/now apps/web/src/app/uses apps/web/src/app/tokens apps/web/src/app/hire-me
 git commit -m "feat(routes): stub /timeline /now /uses /tokens /hire-me"
 ```
 
@@ -2121,7 +2124,7 @@ git commit -m "feat(routes): stub /timeline /now /uses /tokens /hire-me"
 ## Task 25: Add not-found page
 
 **Files:**
-- Create: `apps/web/app/not-found.tsx`
+- Create: `apps/web/src/app/not-found.tsx`
 
 - [ ] **Step 1: Implement**
 
@@ -2155,12 +2158,12 @@ export default function NotFound() {
 }
 ```
 
-Save as `apps/web/app/not-found.tsx`.
+Save as `apps/web/src/app/not-found.tsx`.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/app/not-found.tsx
+git add apps/web/src/app/not-found.tsx
 git commit -m "feat(routes): add custom 404 page"
 ```
 
@@ -2169,7 +2172,7 @@ git commit -m "feat(routes): add custom 404 page"
 ## Task 26: Add favicon + verify metadata
 
 **Files:**
-- Create: `apps/web/app/icon.tsx` (dynamic favicon from monogram)
+- Create: `apps/web/src/app/icon.tsx` (dynamic favicon from monogram)
 
 - [ ] **Step 1: Create dynamic favicon using Next.js metadata icons**
 
@@ -2206,7 +2209,7 @@ export default function Icon() {
 }
 ```
 
-Save as `apps/web/app/icon.tsx`.
+Save as `apps/web/src/app/icon.tsx`.
 
 - [ ] **Step 2: Verify favicon in dev server**
 
@@ -2219,7 +2222,7 @@ Stop server.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/web/app/icon.tsx
+git add apps/web/src/app/icon.tsx
 git commit -m "feat(branding): generate CJS favicon from monogram"
 ```
 
