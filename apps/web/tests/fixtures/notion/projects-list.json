@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "properties": {
+        "Title":         { "type": "title", "title": [{ "plain_text": "Finance Tracker" }] },
+        "Slug":          { "type": "rich_text", "rich_text": [{ "plain_text": "finance-tracker" }] },
+        "Type":          { "type": "select", "select": { "name": "Software" } },
+        "Status":        { "type": "select", "select": { "name": "Active" } },
+        "Year":          { "type": "number", "number": 2026 },
+        "Summary":       { "type": "rich_text", "rich_text": [{ "plain_text": "多账户资产追踪。" }] },
+        "Cover":         { "type": "files", "files": [{ "type": "external", "external": { "url": "https://cdn/cover.jpg" } }] },
+        "Tags":          { "type": "multi_select", "multi_select": [{ "name": "Web" }] },
+        "Stack":         { "type": "multi_select", "multi_select": [{ "name": "FastAPI" }, { "name": "Postgres" }] },
+        "RepoURL":       { "type": "url", "url": "https://github.com/jason/ft" },
+        "DemoURL":       { "type": "url", "url": null },
+        "ModelGLB_URL":  { "type": "url", "url": null },
+        "Featured":      { "type": "checkbox", "checkbox": true },
+        "Published":     { "type": "checkbox", "checkbox": true },
+        "Order":         { "type": "number", "number": 1 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "properties": {
+        "Title":         { "type": "title", "title": [{ "plain_text": "桌面机械臂" }] },
+        "Slug":          { "type": "rich_text", "rich_text": [{ "plain_text": "desktop-arm" }] },
+        "Type":          { "type": "select", "select": { "name": "Mechanical" } },
+        "Status":        { "type": "select", "select": { "name": "Active" } },
+        "Year":          { "type": "number", "number": 2025 },
+        "Summary":       { "type": "rich_text", "rich_text": [{ "plain_text": "6 自由度机械臂。" }] },
+        "Cover":         { "type": "files", "files": [] },
+        "Tags":          { "type": "multi_select", "multi_select": [] },
+        "Stack":         { "type": "multi_select", "multi_select": [{ "name": "SolidWorks" }] },
+        "RepoURL":       { "type": "url", "url": null },
+        "DemoURL":       { "type": "url", "url": null },
+        "ModelGLB_URL":  { "type": "url", "url": "https://r2/arm.glb" },
+        "Featured":      { "type": "checkbox", "checkbox": true },
+        "Published":     { "type": "checkbox", "checkbox": true },
+        "Order":         { "type": "number", "number": 2 }
+      }
+    }
+  ],
+  "next_cursor": null
+}
