@@ -1,13 +1,25 @@
 import type { Metadata } from 'next';
 import { fontClassNames } from '@/lib/fonts';
+import { TopNav } from '@/components/nav/top-nav';
+import { Footer } from '@/components/nav/footer';
+import { site } from '@/lib/site';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: '陈敬升 Jason Chen',
-    template: '%s · 陈敬升',
+    default: `${site.nameZh} ${site.name}`,
+    template: `%s · ${site.nameZh}`,
   },
-  description: '工程师 / Builder · 个人门户、项目、思考',
+  description: site.description,
+  metadataBase: new URL(site.url),
+  openGraph: {
+    title: `${site.nameZh} ${site.name}`,
+    description: site.description,
+    url: site.url,
+    siteName: site.name,
+    locale: 'zh_CN',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -16,8 +28,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" className={fontClassNames}>
-      <body>{children}</body>
+    <html lang={site.locale} className={fontClassNames}>
+      <body className="flex min-h-screen flex-col">
+        <TopNav />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </body>
     </html>
   );
 }
