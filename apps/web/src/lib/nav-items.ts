@@ -10,14 +10,12 @@ export const navItems: NavItem[] = [
   { href: '/resume', label: 'Resume' },
   { href: '/projects', label: 'Projects' },
   { href: '/thinking', label: 'Thinking' },
-  { href: '/timeline', label: 'Timeline' },
-  { href: '/tokens', label: 'Tokens' },
   { href: '/now', label: 'Now' },
+  { href: '/contact', label: 'Contact' },
 ];
 
 export const footerLinks: NavItem[] = [
   { href: `mailto:${site.email}`, label: 'Email' },
   { href: site.github, label: 'GitHub' },
-  { href: '/hire-me', label: 'Hire me' },
   { href: '/uses', label: 'Uses' },
 ];

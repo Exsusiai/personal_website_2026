@@ -13,9 +13,9 @@ describe('Footer', () => {
     expect(screen.getByText(/陈敬升/)).toBeInTheDocument();
   });
 
-  it('renders Email, GitHub, Hire me, Uses links', () => {
+  it('renders Email, GitHub, Uses links', () => {
     render(<Footer />);
-    for (const label of ['Email', 'GitHub', 'Hire me', 'Uses']) {
+    for (const label of ['Email', 'GitHub', 'Uses']) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });

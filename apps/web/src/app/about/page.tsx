@@ -8,7 +8,7 @@ export default function AboutPage() {
     <ComingSoon
       titleEn="About"
       titleZh="我是谁"
-      description="完整版自我介绍将在 Phase 2 从 Notion 拉取。"
+      description="完整版自我介绍 + 内嵌成长时间轴将在 Phase 2 从 Notion 拉取。"
     />
   );
 }

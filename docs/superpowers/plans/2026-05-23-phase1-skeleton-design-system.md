@@ -1,5 +1,7 @@
 # Phase 1: Skeleton + Design System Implementation Plan
 
+> **Status (2026-05-23)**: ✅ Executed and tagged `v0.1.0-phase1`. Post-execution IA refactor consolidated `/timeline` into `/about` page, removed `/tokens` (data shows in homepage card only), and renamed `/hire-me` → `/contact`. Current routes & navigation are authoritative in `docs/superpowers/specs/2026-05-23-personal-website-design.md`. This plan file is preserved as the **historical execution record**; references below to `/timeline`, `/tokens`, `/hire-me`, "Next.js 15" etc. reflect the original drafted spec, not the live codebase.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 初始化 pnpm monorepo + Next.js 15 + Tailwind v4 项目骨架，实现 Nordic Editorial 设计系统，产出 11 个路由全部可访问，其中首页完全符合视觉 mockup。

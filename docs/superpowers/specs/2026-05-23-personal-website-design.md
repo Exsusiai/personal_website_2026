@@ -45,41 +45,43 @@
 ### 站点地图
 
 ```
-/                      首页（聚合页：身份 + 精选项目 + Now + Token 缩略）
-/about                 我是谁
+/                      首页（聚合页：身份 + 精选项目 + Now + Token 用量缩略）
+/about                 我是谁（内嵌成长时间轴 section）
 /resume                简历（含 PDF 下载）
 /projects              项目列表
 /projects/[slug]       项目详情（含 3D 查看器）
 /thinking              业务思考 Blog 列表
 /thinking/[slug]       文章详情
-/timeline              成长时间轴
 /now                   Now 页（当下在忙什么）
 /uses                  装备清单
-/tokens                Token 用量看板
-/hire-me               联系方式 + 合作意向
+/contact               联系方式 + 合作意向
 ```
+
+**主导航 6 项**：About / Resume / Projects / Thinking / Now / Contact
+**页脚 3 项**：Email / GitHub / Uses（Email、GitHub 直接 mailto + URL，避免与 Contact 重复）
 
 ### 模块定位
 
 | 模块 | 数据源 | 更新频率 | 交互重点 |
 |---|---|---|---|
-| 首页 | Notion + 静态 | 不常变 | 一屏抓住身份感 |
-| About | Notion Page | 季度级 | 长文叙述，typography 为王 |
+| 首页 | Notion + 静态 | 不常变 | 一屏抓住身份感（含 Token 用量缩略） |
+| About | Notion Page | 季度级 | 长文叙述 + **内嵌时间轴 section** |
 | Resume | Notion Database | 月度级 | 时间线 + PDF 一键导出 |
 | Projects 列表 | Notion Database | 周度级 | 卡片网格，标签筛选 |
 | Projects 详情 | Notion Page + 自定义字段 | 周度级 | **3D 查看器 / 富媒体 / 文章式 README** |
 | Thinking | Notion Database | 不定 | Tag、阅读时长、长文版式 |
-| Timeline | Notion Database | 季度级 | 纵向时间轴 + 节点详情 |
 | Now | Notion Page | 月度级 | 一屏可读，footer 显示更新时间 |
 | Uses | Notion Database | 季度级 | 分组列表 |
-| Tokens | Supabase Postgres | 5 min ISR | KPI + 时间序列 + 平台分布 |
-| Hire me | Notion Page | 季度级 | 邮件 + 社交链接 + 简短文案 |
+| Contact | Notion Page | 季度级 | 邮箱 + 社交链接 + 二维码 + 合作意向 |
+
+> **IA 备注**：原 spec 设计的 `/timeline`、`/tokens`、`/hire-me` 三个独立路由在 Phase 1 实施时被合并/重定位——Timeline 嵌入 About 页内；Token 用量只保留首页缩略卡，不开独立看板；Hire me 改名为更中性的 Contact。Phase 4 的 Token Daemon 仍会落地，只是数据展示在首页缩略，未来需要详细看板再说。
 
 ### 关键设计决策
 
 1. **结构化 + 富文本双轨**：列表型走 Notion Database + 强字段约束；长文型走 Notion Page
 2. **完全不渲染 Notion 原生样式**：自写 Block Renderer，Notion 仅作数据源
 3. **首页是聚合页**：拼出"我是谁 + 在干嘛 + 做过什么 + 烧了多少 token"的一屏故事
+4. **少而精的导航**：主导航控制在 6 项，Token / Timeline 这类作为 sub-content 嵌入主页面
 
 ---
 
@@ -191,7 +193,7 @@
 |---|---|
 | Year, Month(optional), Title, Type (Career/Education/Project/Personal/Milestone), Description (page body), Cover, Order | |
 
-**3 个 Page**：`about`、`now`、`hire-me`（单页型，富文本）。
+**3 个 Page**：`about`、`now`、`contact`（单页型，富文本）。注：`timeline` database 数据在 About 页中作为 section 渲染，不开独立路由。
 
 **环境变量**：
 
@@ -204,7 +206,7 @@ NOTION_DB_USES=xxx
 NOTION_DB_TIMELINE=xxx
 NOTION_PAGE_ABOUT=xxx
 NOTION_PAGE_NOW=xxx
-NOTION_PAGE_HIRE=xxx
+NOTION_PAGE_CONTACT=xxx
 ```
 
 ### 5.2 Supabase Schema
@@ -378,12 +380,14 @@ SolidWorks → STEP (AP214, 含装配体颜色)
 - 项目代表作
 - 技能 & 工具
 
-### 6.5 Timeline 模块
+### 6.5 Timeline 模块（嵌入 About 页内，不开独立路由）
 
+- About 页正文之后追加一个 Timeline section
 - 纵向时间线，左侧年份，右侧节点
 - 节点 type 颜色编码（Career = 墨黑、Project = 砖红、Education = 灰、Milestone = 砖红填充）
 - 点击节点展开 Notion 富文本详情（含图片）
 - 默认展开最近 3 年，更早年份折叠
+- 数据源：`timeline` Notion Database（结构化字段），通过 `getTimeline()` 拉取
 
 ---
 
@@ -415,38 +419,44 @@ SolidWorks → STEP (AP214, 含装配体颜色)
 ```
 personal_website_new/
 ├── apps/
-│   └── web/                              # Next.js 主站
-│       ├── app/
-│       │   ├── (marketing)/page.tsx      # 首页
-│       │   ├── about/page.tsx
-│       │   ├── now/page.tsx
-│       │   ├── hire-me/page.tsx
-│       │   ├── uses/page.tsx
-│       │   ├── projects/page.tsx
-│       │   ├── projects/[slug]/page.tsx
-│       │   ├── thinking/page.tsx
-│       │   ├── thinking/[slug]/page.tsx
-│       │   ├── resume/page.tsx
-│       │   ├── timeline/page.tsx
-│       │   ├── tokens/page.tsx
-│       │   └── api/
-│       │       ├── usage/ingest/route.ts
-│       │       ├── usage/stats/route.ts
-│       │       └── notion-image/route.ts
-│       ├── components/
-│       │   ├── ui/                       # shadcn 改造后
-│       │   ├── notion/                   # NotionBlockRenderer, RichText
-│       │   ├── projects/                 # ProjectCard, Model3DViewer
-│       │   ├── tokens/                   # UsageChart, KpiCard
-│       │   ├── timeline/
-│       │   └── nav/
-│       ├── lib/
-│       │   ├── cms/                      # Notion 数据访问
-│       │   ├── db/                       # Supabase client
-│       │   ├── r2/
-│       │   ├── notion-image/
-│       │   └── utils.ts
+│   └── web/                              # Next.js 主站（Next 16 src/ 结构）
+│       ├── src/
+│       │   ├── app/
+│       │   │   ├── page.tsx              # 首页（聚合：Hero + Featured + NowTokensDuo + ThinkingList）
+│       │   │   ├── about/page.tsx        # 含内嵌 Timeline section
+│       │   │   ├── now/page.tsx
+│       │   │   ├── contact/page.tsx      # 联系方式 + 合作意向
+│       │   │   ├── uses/page.tsx
+│       │   │   ├── projects/page.tsx
+│       │   │   ├── projects/[slug]/page.tsx
+│       │   │   ├── thinking/page.tsx
+│       │   │   ├── thinking/[slug]/page.tsx
+│       │   │   ├── resume/page.tsx
+│       │   │   ├── not-found.tsx
+│       │   │   ├── icon.tsx              # 动态 favicon
+│       │   │   └── api/
+│       │   │       ├── usage/ingest/route.ts   # Phase 4
+│       │   │       ├── usage/stats/route.ts    # Phase 4
+│       │   │       └── notion-image/route.ts   # Phase 2/5
+│       │   ├── components/
+│       │   │   ├── ui/                   # Container, SectionHead, ...
+│       │   │   ├── nav/                  # TopNav, Footer
+│       │   │   ├── home/                 # Hero, ProjectCard, NowBlock, TokenPreview, ThinkingList
+│       │   │   ├── notion/               # NotionBlockRenderer, RichText (Phase 2)
+│       │   │   ├── projects/             # Model3DViewer (Phase 3)
+│       │   │   ├── timeline/             # TimelineNode (Phase 2, 嵌入 About)
+│       │   │   └── placeholder/          # ComingSoon
+│       │   └── lib/
+│       │       ├── cms/                  # Notion 数据访问 (Phase 2)
+│       │       ├── db/                   # Supabase client (Phase 4)
+│       │       ├── r2/                   # R2 client (Phase 3/5)
+│       │       ├── notion-image/         # 图片代理 (Phase 5)
+│       │       ├── fonts.ts
+│       │       ├── nav-items.ts
+│       │       ├── site.ts
+│       │       └── utils.ts
 │       ├── public/
+│       ├── tests/                        # vitest setup（在 src/ 之外）
 │       └── package.json
 ├── packages/
 │   └── usage-daemons/
@@ -468,35 +478,39 @@ personal_website_new/
 
 ## 9. 开发阶段
 
-### Phase 1：骨架 + 设计系统（Week 1）
-- Next.js 15 + Tailwind v4 + TS 初始化
-- 移植 leerob 基础结构
-- 实现 Nordic 设计系统（颜色变量、字体、Nav、Footer）
-- 静态版首页
-- **里程碑**：localhost 上首页完全符合 mockup
+### Phase 1：骨架 + 设计系统（Week 1）· ✅ 已交付 v0.1.0-phase1
+
+- Next.js 16 + Tailwind v4 + TS 初始化（pnpm monorepo + apps/web/src/）
+- Nordic 设计系统：颜色 token + 字体（Inter + Noto SC + JetBrains Mono）+ Nav + Footer
+- 静态版首页（Hero + FeaturedProjects + NowTokensDuo + ThinkingList）
+- 10 个路由占位（about / resume / projects / projects/[slug] / thinking / thinking/[slug] / now / uses / contact + 404）
+- **里程碑达成**：localhost 上首页符合 mockup，13 tests pass，build 干净
 
 ### Phase 2：Notion 数据层（Week 2）
-- Notion 工作区建好 6 databases + 3 pages
+
+- Notion 工作区建好 5 databases（projects / thinking / resume / uses / timeline）+ 3 pages（about / now / contact）
 - `lib/cms/*` 全套封装
 - 自写 Notion Block Renderer（MVP block 类型）
-- 跑通所有内容页（projects、thinking、about、now、hire-me、uses、timeline、resume）
+- 跑通所有内容页（projects、thinking、about（含 Timeline section）、now、contact、uses、resume）
 - 图片代理 MVP（next/image + remotePatterns）
-- **里程碑**：所有内容页能从 Notion 拉数据渲染
+- **里程碑**：所有内容页能从 Notion 拉数据渲染，timeline 作为 About 页内的 section
 
 ### Phase 3：3D 模型查看器（Week 3 前半）
+
 - 集成 R3F + drei
 - 写 `<Model3DViewer>`（极简：OrbitControls + auto-fit + 基础光照）
 - 走通完整 pipeline（SolidWorks → STEP → CAD Assistant → GLB → R2 → 网页）
 - 真实模型测试至少 2 个装配体
 - **里程碑**：项目详情页能流畅展示 GLB
 
-### Phase 4：Token Daemon + 看板（Week 3 后半 + Week 4 前半）
+### Phase 4：Token Daemon（Week 3 后半 + Week 4 前半）
+
 - Supabase 表 + 物化视图
-- 三个 daemon 全部实现
+- 三个 daemon 全部实现（ccusage-sync + anthropic-poller + openai-poller）
 - 主力 Mac 部署 ccusage-sync（launchd）
 - always-on 设备部署两个 poller
-- `/tokens` 看板页（Tremor 图表）
-- **里程碑**：看板展示真实多平台多设备数据
+- 首页 TokenPreview 卡片接入真实聚合数据（替换占位假数据）
+- **里程碑**：首页 Token 卡片展示真实多平台多设备 30 天聚合数据（不开独立看板页）
 
 ### Phase 5：图片代理升级 + PDF + 打磨（Week 4 后半）
 - 图片代理升级到 R2 缓存版

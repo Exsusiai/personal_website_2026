@@ -10,7 +10,7 @@ describe('TopNav', () => {
 
   it('renders all primary nav links', () => {
     render(<TopNav />);
-    const expected = ['About', 'Resume', 'Projects', 'Thinking', 'Timeline', 'Tokens', 'Now'];
+    const expected = ['About', 'Resume', 'Projects', 'Thinking', 'Now', 'Contact'];
     for (const label of expected) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
