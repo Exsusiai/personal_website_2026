@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "id": "00000000-0000-0000-0000-000000000030",
+      "properties": {
+        "Title":       { "type": "title", "title": [{ "plain_text": "MacBook Pro 16\"" }] },
+        "Category":    { "type": "select", "select": { "name": "Hardware" } },
+        "Subcategory": { "type": "rich_text", "rich_text": [{ "plain_text": "Computer" }] },
+        "Brand":       { "type": "rich_text", "rich_text": [{ "plain_text": "Apple" }] },
+        "Note":        { "type": "rich_text", "rich_text": [{ "plain_text": "M3 Max, daily driver." }] },
+        "URL":         { "type": "url", "url": "https://apple.com/macbook-pro" },
+        "YearStarted": { "type": "number", "number": 2024 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000031",
+      "properties": {
+        "Title":       { "type": "title", "title": [{ "plain_text": "Neovim" }] },
+        "Category":    { "type": "select", "select": { "name": "Software" } },
+        "Subcategory": { "type": "rich_text", "rich_text": [{ "plain_text": "Editor" }] },
+        "Brand":       { "type": "rich_text", "rich_text": [] },
+        "Note":        { "type": "rich_text", "rich_text": [{ "plain_text": "LazyVim config." }] },
+        "URL":         { "type": "url", "url": "https://neovim.io" },
+        "YearStarted": { "type": "number", "number": 2022 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000032",
+      "properties": {
+        "Title":       { "type": "title", "title": [{ "plain_text": "Cloudflare R2" }] },
+        "Category":    { "type": "select", "select": { "name": "Service" } },
+        "Subcategory": { "type": "rich_text", "rich_text": [] },
+        "Brand":       { "type": "rich_text", "rich_text": [{ "plain_text": "Cloudflare" }] },
+        "Note":        { "type": "rich_text", "rich_text": [] },
+        "URL":         { "type": "url", "url": null },
+        "YearStarted": { "type": "number", "number": 2023 }
+      }
+    }
+  ],
+  "next_cursor": null
+}
