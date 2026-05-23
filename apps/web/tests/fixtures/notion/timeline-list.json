@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "id": "00000000-0000-0000-0000-000000000040",
+      "properties": {
+        "Title":  { "type": "title", "title": [{ "plain_text": "Joined Anthropic" }] },
+        "Year":   { "type": "number", "number": 2024 },
+        "Month":  { "type": "number", "number": 1 },
+        "Type":   { "type": "select", "select": { "name": "Career" } },
+        "Cover":  { "type": "files", "files": [] },
+        "Order":  { "type": "number", "number": 1 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000041",
+      "properties": {
+        "Title":  { "type": "title", "title": [{ "plain_text": "Launched Finance Tracker" }] },
+        "Year":   { "type": "number", "number": 2026 },
+        "Month":  { "type": "number", "number": null },
+        "Type":   { "type": "select", "select": { "name": "Project" } },
+        "Cover":  { "type": "files", "files": [{ "type": "external", "external": { "url": "https://cdn/timeline-cover.jpg" } }] },
+        "Order":  { "type": "number", "number": 1 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000042",
+      "properties": {
+        "Title":  { "type": "title", "title": [{ "plain_text": "Graduated MIT" }] },
+        "Year":   { "type": "number", "number": 2022 },
+        "Month":  { "type": "number", "number": 6 },
+        "Type":   { "type": "select", "select": { "name": "Education" } },
+        "Cover":  { "type": "files", "files": [] },
+        "Order":  { "type": "number", "number": 1 }
+      }
+    }
+  ],
+  "next_cursor": null
+}
