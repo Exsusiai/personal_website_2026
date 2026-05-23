@@ -1,0 +1,57 @@
+{
+  "results": [
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "properties": {
+        "Title":     { "type": "title", "title": [{ "plain_text": "Software Engineer" }] },
+        "Type":      { "type": "select", "select": { "name": "Experience" } },
+        "Org":       { "type": "rich_text", "rich_text": [{ "plain_text": "Anthropic" }] },
+        "Location":  { "type": "rich_text", "rich_text": [{ "plain_text": "Remote" }] },
+        "StartDate": { "type": "date", "date": { "start": "2024-01-01", "end": null } },
+        "EndDate":   { "type": "date", "date": null },
+        "Tags":      { "type": "multi_select", "multi_select": [{ "name": "AI" }] },
+        "Order":     { "type": "number", "number": 1 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000021",
+      "properties": {
+        "Title":     { "type": "title", "title": [{ "plain_text": "B.Eng. Computer Science" }] },
+        "Type":      { "type": "select", "select": { "name": "Education" } },
+        "Org":       { "type": "rich_text", "rich_text": [{ "plain_text": "MIT" }] },
+        "Location":  { "type": "rich_text", "rich_text": [] },
+        "StartDate": { "type": "date", "date": { "start": "2018-09-01", "end": null } },
+        "EndDate":   { "type": "date", "date": { "start": "2022-06-30", "end": null } },
+        "Tags":      { "type": "multi_select", "multi_select": [] },
+        "Order":     { "type": "number", "number": 1 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000022",
+      "properties": {
+        "Title":     { "type": "title", "title": [{ "plain_text": "TypeScript" }] },
+        "Type":      { "type": "select", "select": { "name": "Skill" } },
+        "Org":       { "type": "rich_text", "rich_text": [] },
+        "Location":  { "type": "rich_text", "rich_text": [] },
+        "StartDate": { "type": "date", "date": { "start": "2020-01-01", "end": null } },
+        "EndDate":   { "type": "date", "date": null },
+        "Tags":      { "type": "multi_select", "multi_select": [{ "name": "Language" }] },
+        "Order":     { "type": "number", "number": 1 }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000023",
+      "properties": {
+        "Title":     { "type": "title", "title": [{ "plain_text": "Hackathon Winner 2023" }] },
+        "Type":      { "type": "select", "select": { "name": "Award" } },
+        "Org":       { "type": "rich_text", "rich_text": [{ "plain_text": "TechCrunch Disrupt" }] },
+        "Location":  { "type": "rich_text", "rich_text": [] },
+        "StartDate": { "type": "date", "date": { "start": "2023-11-01", "end": null } },
+        "EndDate":   { "type": "date", "date": null },
+        "Tags":      { "type": "multi_select", "multi_select": [] },
+        "Order":     { "type": "number", "number": 1 }
+      }
+    }
+  ],
+  "next_cursor": null
+}
