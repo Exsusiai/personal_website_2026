@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   Nordic Editorial Design Tokens
+   ============================================================ */
+
+@theme {
+  /* ---- Colors (Light mode default) ---- */
+  --color-bg: #FAFAF7;
+  --color-surface: #F2F1EC;
+  --color-text: #1A1A1A;
+  --color-text-2: #6B6B66;
+  --color-border: #E5E4DE;
+  --color-accent: #C84B31;
+
+  /* ---- Font families (Inter via next/font) ---- */
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-tight: var(--font-inter-tight), system-ui, sans-serif;
+  --font-zh-sans: var(--font-noto-sans-sc), 'PingFang SC', system-ui, sans-serif;
+  --font-zh-serif: var(--font-noto-serif-sc), Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), 'SF Mono', Menlo, monospace;
+
+  /* ---- Type scale ---- */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+  --text-4xl: 64px;
+
+  /* ---- Spacing ---- */
+  --max-w-reading: 680px;
+  --max-w-container: 1080px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* ---- Dark mode tokens ---- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-bg: #1A1817;
+    --color-surface: #242120;
+    --color-text: #EDEAE3;
+    --color-text-2: #8C8780;
+    --color-border: #2E2A28;
+    --color-accent: #E5704F;
   }
 }
 
+/* ============================================================
+   Base styles
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* ---- Utility: hairline border ---- */
+.hairline {
+  border: 1px solid var(--color-border);
+}
+.hairline-t { border-top: 1px solid var(--color-border); }
+.hairline-b { border-bottom: 1px solid var(--color-border); }
+
+/* ---- Prose styles (for long-form content from Notion) ---- */
+.prose-zh {
+  font-family: var(--font-zh-serif);
+  font-size: 17px;
+  line-height: 1.85;
+  max-width: var(--max-w-reading);
+}
+
+.prose-zh p { margin-bottom: 1em; }
+.prose-zh h2 {
+  font-family: var(--font-tight);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  line-height: 1.2;
+}
+.prose-zh h3 {
+  font-family: var(--font-tight);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+.prose-zh code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+}
+.prose-zh blockquote {
+  border-left: 2px solid var(--color-accent);
+  padding-left: 1em;
+  font-style: italic;
+  color: var(--color-text-2);
 }
