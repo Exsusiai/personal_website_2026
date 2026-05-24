@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
-import { ComingSoon } from '@/components/placeholder/coming-soon';
+import { notFound } from 'next/navigation';
+import { Container } from '@/components/ui/container';
+import { NotionBlocks } from '@/components/notion/notion-blocks';
+import { getArticleBySlug } from '@/lib/cms/thinking';
+import { getBlockChildren } from '@/lib/cms/blocks';
+
+export const revalidate = 300;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -7,16 +13,33 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  return { title: `Article · ${slug}` };
+  const article = await getArticleBySlug(slug);
+  if (!article) return { title: 'Article Not Found' };
+  return { title: article.title, description: article.summary };
 }
 
 export default async function ThinkingDetailPage({ params }: PageProps) {
   const { slug } = await params;
+  const article = await getArticleBySlug(slug);
+  if (!article) notFound();
+
+  const blocks = await getBlockChildren(article.id);
+
   return (
-    <ComingSoon
-      titleEn={`Article: ${slug}`}
-      titleZh="文章详情"
-      description="文章正文将在 Phase 2 通过 Notion Block Renderer 渲染。"
-    />
+    <Container as="section" className="py-18 sm:py-20">
+      <div className="mx-auto max-w-[680px]">
+        <h1 className="font-[family-name:var(--font-tight)] mb-4 text-3xl font-semibold leading-tight tracking-tight">
+          {article.title}
+        </h1>
+        <p className="font-[family-name:var(--font-mono)] mb-10 text-xs text-[var(--color-text-2)]">
+          {article.publishedDate}
+          {article.readTime > 0 && ` · ${article.readTime} min read`}
+          {article.tags.length > 0 && ` · ${article.tags.join(', ')}`}
+        </p>
+        <div className="prose-zh">
+          <NotionBlocks blocks={blocks} />
+        </div>
+      </div>
+    </Container>
   );
 }
