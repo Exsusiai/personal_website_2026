@@ -7,7 +7,7 @@ export function getNotionClient(): Client {
   if (_client) return _client;
   _client = new Client({
     auth: getEnv().NOTION_TOKEN,
-    notionVersion: '2022-06-28',
+    notionVersion: '2025-09-03',
   });
   return _client;
 }

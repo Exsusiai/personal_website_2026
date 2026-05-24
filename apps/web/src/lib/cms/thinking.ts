@@ -41,7 +41,7 @@ export async function listThinking(opts: ListThinkingOpts = {}): Promise<Article
 
   const resp = await withRetry(() =>
     client.dataSources.query({
-      data_source_id: getEnv().NOTION_DB_THINKING,
+      data_source_id: getEnv().NOTION_DS_THINKING,
       filter: { and: andFilters } as never,
       sorts: [{ property: 'PublishedDate', direction: 'descending' }],
       page_size: opts.limit ?? 100,
@@ -59,7 +59,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   const client = getNotionClient();
   const resp = await withRetry(() =>
     client.dataSources.query({
-      data_source_id: getEnv().NOTION_DB_THINKING,
+      data_source_id: getEnv().NOTION_DS_THINKING,
       filter: {
         and: [
           { property: 'Slug', rich_text: { equals: slug } },

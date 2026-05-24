@@ -41,7 +41,7 @@ export async function getTimeline(): Promise<TimelineNode[]> {
   do {
     const resp = await withRetry(() =>
       client.dataSources.query({
-        data_source_id: getEnv().NOTION_DB_TIMELINE,
+        data_source_id: getEnv().NOTION_DS_TIMELINE,
         start_cursor: cursor,
         page_size: 100,
       }),
