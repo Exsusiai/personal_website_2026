@@ -1,0 +1,19 @@
+{
+  "name": "@personal-website/usage-daemons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ccusage": "tsx ccusage-sync/index.ts",
+    "anthropic": "tsx anthropic-poller/index.ts",
+    "openai": "tsx openai-poller/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "tsx": "^4.20.0",
+    "typescript": "^5"
+  }
+}
