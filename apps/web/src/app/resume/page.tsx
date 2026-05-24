@@ -3,7 +3,9 @@ import { Container } from '@/components/ui/container';
 import { SectionHead } from '@/components/ui/section-head';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ResumeSection } from '@/components/resume/resume-section';
+import { ResumeDownloadButton } from '@/components/resume/resume-download-button';
 import { getResume } from '@/lib/cms/resume';
+import { site } from '@/lib/site';
 
 export const revalidate = 300;
 
@@ -26,6 +28,16 @@ export default async function ResumePage() {
   return (
     <Container as="section" className="py-18 sm:py-20">
       <SectionHead titleEn="Resume" titleZh="简历" />
+      {!allEmpty && (
+        <div className="mb-8 flex justify-end">
+          <ResumeDownloadButton
+            bundle={resume}
+            name={`${site.nameZh} ${site.name}`}
+            email={site.email}
+            github={site.github}
+          />
+        </div>
+      )}
       {allEmpty ? (
         <EmptyState
           titleEn="No content"
