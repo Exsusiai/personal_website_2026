@@ -112,6 +112,67 @@ export default async function Page({ params }: PageProps) {
 
 ---
 
+## LRN-010 · Notion SDK v5 + API 2025-09-03 用 data_source_id 而非 database_id
+
+**问题**：用 `@notionhq/client` v5 调 `dataSources.query({ data_source_id: <DB_ID> })` 报 `invalid_request_url`。
+
+**根因**：Notion 2025-09 引入了 **data sources** 概念，把可查询单位从 database 分离出来。SDK v5 移除了 `databases.query`，全部走 `dataSources.query`。data_source_id ≠ database_id：一个 database 包含一个或多个 data sources（简单情况下 1 个）。
+
+**做法**：
+1. notionVersion 设 `2025-09-03`（旧 `2022-06-28` 没这个端点）
+2. 拿 data_source_id：`GET /v1/databases/{db_id}` → 响应里的 `data_sources[0].id`
+3. env vars 命名用 `NOTION_DS_*` 不用 `NOTION_DB_*`，避免后续维护混淆
+
+**含义**：所有 Notion 集成项目升 v5 都要做一次 ID 重新收集。
+
+---
+
+## LRN-011 · Next.js 16 禁止 Server Component 里 `dynamic(..., { ssr: false })`
+
+**问题**：在 Server Component（如 `app/projects/[slug]/page.tsx`）里 `dynamic(() => import(...), { ssr: false })` 编译报错 `ssr: false is not allowed with next/dynamic in Server Components`。
+
+**根因**：Next 16 App Router 强约束 —— `ssr:false` 是客户端边界控制语义，必须在 client component 里用。
+
+**做法**：建一个 thin client wrapper：
+```tsx
+// loader.tsx
+'use client';
+import dynamic from 'next/dynamic';
+export const Heavy = dynamic(() => import('./heavy'), { ssr: false });
+```
+Server Component 引用 wrapper。运行时行为不变（heavy 代码仍 client-only），架构上更清晰。
+
+---
+
+## LRN-012 · pnpm workspace `type: "module"` 的 TS 导入要加 `.js` 后缀
+
+**问题**：`packages/usage-daemons` package.json 里 `"type": "module"`，TS 文件之间相对 import 写 `from './shared/env'` 跑 tsx 会报模块找不到。
+
+**根因**：ESM resolution 严格——必须带扩展名。TS 编译时 .ts 文件目标 .js，所以源里写 `.js` 后缀是惯用法。
+
+**做法**：源代码里写 `from './shared/env.js'`（即使源文件是 .ts）。tsx 和 tsc 都能识别这种"虚扩展名"指向同名 .ts。
+
+---
+
+## LRN-013 · Zod v4 错误消息结构变了
+
+**问题**：Zod v3 的 `error.message` 字符串里带字段名；v4 不带，只在 `error.issues[i].path` 里有。
+
+**做法**：用 `safeParse`，失败时手动 join `result.error.issues.map(i => i.path.join('.'))` 构造错误消息。
+
+---
+
+## LRN-014 · Next 16 sitemap / robots / opengraph-image 用文件约定
+
+**做法**：在 `app/` 下放：
+- `sitemap.ts` → 自动生成 `/sitemap.xml`（导出 default 函数返回 `MetadataRoute.Sitemap`）
+- `robots.ts` → 自动生成 `/robots.txt`
+- `opengraph-image.tsx` → 任意路由级别 OG 图（用 next/og 的 ImageResponse）
+
+不需要手写 API route。`runtime = 'edge'` + ImageResponse 标配。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown
