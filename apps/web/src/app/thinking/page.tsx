@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { SectionHead } from '@/components/ui/section-head';
+import { EmptyState } from '@/components/ui/empty-state';
 import { listThinking } from '@/lib/cms/thinking';
 
 export const revalidate = 300;
@@ -15,7 +16,11 @@ export default async function ThinkingPage() {
     <Container as="section" className="py-18 sm:py-20">
       <SectionHead titleEn="Thinking" titleZh="业务思考" />
       {articles.length === 0 ? (
-        <p className="text-[var(--color-text-2)]">No posts yet.</p>
+        <EmptyState
+          titleEn="No articles"
+          titleZh="暂无文章"
+          hint="在 Notion 的 thinking 数据库中创建条目并勾选 Published。"
+        />
       ) : (
         <ul className="max-w-[720px]">
           {articles.map((a, i) => (

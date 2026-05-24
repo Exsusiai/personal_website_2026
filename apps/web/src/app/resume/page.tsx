@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Container } from '@/components/ui/container';
 import { SectionHead } from '@/components/ui/section-head';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ResumeSection } from '@/components/resume/resume-section';
 import { getResume } from '@/lib/cms/resume';
 
@@ -18,21 +19,33 @@ const SECTIONS = [
 export default async function ResumePage() {
   const resume = await getResume();
 
+  const allEmpty = SECTIONS.every(
+    ({ key }) => resume[key as keyof typeof resume].length === 0,
+  );
+
   return (
     <Container as="section" className="py-18 sm:py-20">
       <SectionHead titleEn="Resume" titleZh="简历" />
-      <div className="space-y-16">
-        {SECTIONS.map(({ key, en, zh, variant }) => {
-          const items = resume[key as keyof typeof resume];
-          if (items.length === 0) return null;
-          return (
-            <div key={key}>
-              <SectionHead titleEn={en} titleZh={zh} className="mb-4" />
-              <ResumeSection items={items} variant={variant} />
-            </div>
-          );
-        })}
-      </div>
+      {allEmpty ? (
+        <EmptyState
+          titleEn="No content"
+          titleZh="暂无简历"
+          hint="在 Notion 的 resume 数据库中创建条目并勾选 Published。"
+        />
+      ) : (
+        <div className="space-y-16">
+          {SECTIONS.map(({ key, en, zh, variant }) => {
+            const items = resume[key as keyof typeof resume];
+            if (items.length === 0) return null;
+            return (
+              <div key={key}>
+                <SectionHead titleEn={en} titleZh={zh} className="mb-4" />
+                <ResumeSection items={items} variant={variant} />
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Container>
   );
 }

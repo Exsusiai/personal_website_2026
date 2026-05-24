@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { SectionHead } from '@/components/ui/section-head';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getUses } from '@/lib/cms/uses';
 import type { UsesItem } from '@/lib/cms/types';
 
@@ -59,31 +60,41 @@ export default async function UsesPage() {
     { key: 'service', items: uses.service },
   ] as const;
 
+  const allEmpty = sections.every(({ items }) => items.length === 0);
+
   return (
     <Container as="section" className="py-18 sm:py-20">
       <SectionHead titleEn="Uses" titleZh="装备清单" />
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-        {sections.map(({ key, items }) => {
-          if (items.length === 0) return null;
-          const label = SECTION_LABELS[key];
-          return (
-            <div key={key}>
-              <h3 className="font-[family-name:var(--font-tight)] mb-4 text-lg font-semibold">
-                <span className="font-[family-name:var(--font-zh-serif)] font-medium">
-                  {label.zh}
-                </span>
-                {' · '}
-                {label.en}
-              </h3>
-              <div>
-                {items.map((item) => (
-                  <UsesItemRow key={item.id} item={item} />
-                ))}
+      {allEmpty ? (
+        <EmptyState
+          titleEn="No items"
+          titleZh="暂无装备"
+          hint="在 Notion 的 uses 数据库中创建条目并勾选 Published。"
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+          {sections.map(({ key, items }) => {
+            if (items.length === 0) return null;
+            const label = SECTION_LABELS[key];
+            return (
+              <div key={key}>
+                <h3 className="font-[family-name:var(--font-tight)] mb-4 text-lg font-semibold">
+                  <span className="font-[family-name:var(--font-zh-serif)] font-medium">
+                    {label.zh}
+                  </span>
+                  {' · '}
+                  {label.en}
+                </h3>
+                <div>
+                  {items.map((item) => (
+                    <UsesItemRow key={item.id} item={item} />
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Container>
   );
 }
