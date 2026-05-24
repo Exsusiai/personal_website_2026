@@ -21,3 +21,11 @@ CREATE TABLE IF NOT EXISTS usage_events (
 CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage_events(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_usage_platform_ts ON usage_events(platform, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_usage_device_ts ON usage_events(device, ts DESC);
+
+-- ============================================================
+-- Row Level Security
+-- ============================================================
+-- service_role bypasses RLS, so our /api/usage/{ingest,stats} routes work.
+-- anon + authenticated are denied entirely (no policies = default deny).
+-- If we later expose read access to client-side, add a SELECT policy.
+ALTER TABLE usage_events ENABLE ROW LEVEL SECURITY;

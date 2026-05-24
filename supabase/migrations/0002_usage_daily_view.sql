@@ -20,3 +20,12 @@ BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY usage_daily;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- Access control for the materialized view
+-- ============================================================
+-- Materialized views don't support RLS directly (PG limitation), so we use
+-- GRANT/REVOKE. service_role is the only role with SELECT — anon + authenticated
+-- are explicitly revoked (they may have been auto-granted at view creation).
+REVOKE ALL ON usage_daily FROM anon, authenticated, public;
+GRANT SELECT ON usage_daily TO service_role;

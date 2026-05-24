@@ -9,3 +9,9 @@ CREATE TABLE IF NOT EXISTS notion_image_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notion_image_synced ON notion_image_cache(last_synced DESC);
+
+-- ============================================================
+-- Row Level Security
+-- ============================================================
+-- Same pattern as usage_events: service_role bypasses, others denied.
+ALTER TABLE notion_image_cache ENABLE ROW LEVEL SECURITY;
