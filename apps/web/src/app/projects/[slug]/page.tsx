@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { SectionHead } from '@/components/ui/section-head';
@@ -7,6 +8,11 @@ import { NotionBlocks } from '@/components/notion/notion-blocks';
 import { ProjectMeta } from '@/components/projects/project-meta';
 import { getProjectBySlug } from '@/lib/cms/projects';
 import { getBlockChildren } from '@/lib/cms/blocks';
+
+const Model3DViewer = dynamic(
+  () => import('@/components/projects/model-3d-viewer').then(m => m.Model3DViewer),
+  { ssr: false, loading: () => null }
+);
 
 export const revalidate = 300;
 
@@ -45,7 +51,18 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* TODO Phase 3: render Model3DViewer when project.modelGlbUrl exists */}
+      {project.modelGlbUrl && (
+        <section className="my-12">
+          <div className="font-[family-name:var(--font-mono)] mb-3 text-xs uppercase tracking-[0.12em] text-[var(--color-text-2)]">
+            3D Model · {project.title}
+          </div>
+          <Model3DViewer src={project.modelGlbUrl} />
+          <p className="font-[family-name:var(--font-mono)] mt-2 text-xs text-[var(--color-text-2)]">
+            拖动旋转 · 滚轮缩放 · 右键平移
+          </p>
+        </section>
+      )}
+
       <div className="prose-zh mx-auto max-w-[680px]">
         <NotionBlocks blocks={blocks} />
       </div>
