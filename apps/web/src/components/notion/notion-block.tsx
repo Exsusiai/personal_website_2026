@@ -159,10 +159,9 @@ function BlockCode({ block }: { block: NotionBlock }): React.JSX.Element {
   const codeText = (code?.rich_text ?? []).map((r) => r.plain_text).join('');
   const language = code?.language ?? 'text';
 
-  // CodeBlock is an async Server Component — cast to JSX.Element for the synchronous
-  // dispatch signature. Next.js resolves async components at render time on the server.
+  // CodeBlock is an async Server Component. Next.js resolves async components at render
+  // time on the server; TypeScript 5 + React 19 types accept this natively.
   return (
-    // @ts-expect-error async Server Component is valid JSX in Next.js App Router
     <CodeBlock code={codeText} language={language} />
   );
 }
