@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { RichText, type RichTextItem } from './rich-text';
+import { CodeBlock } from './code-block';
 import type { NotionBlock } from '@/lib/cms/blocks';
 
 // Forward-declare to avoid circular import at module evaluation time.
@@ -153,23 +154,15 @@ function BlockImage({ block }: { block: NotionBlock }): React.JSX.Element {
 }
 
 function BlockCode({ block }: { block: NotionBlock }): React.JSX.Element {
-  // Lazily import CodeBlock to avoid SSR bundling issues; this is a server component.
-  // We render a placeholder that gets replaced by CodeBlock in B16.
   const code = (block as { code?: { rich_text?: RichTextItem[]; language?: string } }).code;
   const codeText = (code?.rich_text ?? []).map((r) => r.plain_text).join('');
   const language = code?.language ?? 'text';
 
-  // CodeBlock is async — rendered by the parent server component calling it directly.
-  // We export the data so callers can use <CodeBlock code={...} language={...} />.
-  // For now, fall back to <pre> so tests don't need shiki.
+  // CodeBlock is an async Server Component — cast to JSX.Element for the synchronous
+  // dispatch signature. Next.js resolves async components at render time on the server.
   return (
-    <pre
-      data-code-block
-      data-language={language}
-      className="font-[family-name:var(--font-mono)] my-4 overflow-x-auto rounded border border-[var(--color-border)] p-4 text-sm"
-    >
-      <code>{codeText}</code>
-    </pre>
+    // @ts-expect-error async Server Component is valid JSX in Next.js App Router
+    <CodeBlock code={codeText} language={language} />
   );
 }
 
