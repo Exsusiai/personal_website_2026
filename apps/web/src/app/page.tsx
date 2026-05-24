@@ -3,6 +3,8 @@ import { FeaturedProjects } from '@/components/home/featured-projects';
 import { NowTokensDuo } from '@/components/home/now-tokens-duo';
 import { ThinkingList } from '@/components/home/thinking-list';
 
+export const revalidate = 300;
+
 export default function HomePage() {
   return (
     <>
