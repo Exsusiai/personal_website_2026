@@ -19,9 +19,9 @@ const PLATFORM_STACK_ORDER = [
   'moonshot', 'zhipu', 'minimax', 'deepseek', 'google', 'local', 'other', 'github', 'openai', 'anthropic',
 ];
 const PLATFORM_COLORS: Record<string, string> = {
-  anthropic: 'var(--color-text)',
-  openai: 'var(--color-accent)',
-  zhipu: 'var(--color-text-2)',
+  anthropic: '#D97757',                 // brand-aligned orange
+  openai: 'var(--color-text)',          // ink black
+  zhipu: 'var(--color-text-2)',         // warm gray
   moonshot: 'var(--color-border)',
   google: '#A1A095',
   deepseek: '#8E8C85',
@@ -31,7 +31,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   other: '#C2C0BA',
 };
 const PLATFORM_LABELS: Record<string, string> = {
-  anthropic: 'Anthropic', openai: 'OpenAI', zhipu: 'Zhipu', moonshot: 'Moonshot',
+  anthropic: 'Anthropic', openai: 'OpenAI', zhipu: 'ZAI/zhipu', moonshot: 'Moonshot',
   google: 'Google', deepseek: 'DeepSeek', minimax: 'MiniMax', github: 'GitHub',
   local: 'Local', other: 'Other',
 };

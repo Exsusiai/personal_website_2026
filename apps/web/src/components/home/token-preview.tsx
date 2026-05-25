@@ -5,9 +5,9 @@ const FETCH_DAYS = 30;       // we fetch 30 days; chart scroll lets user see the
 const VIEW_DAYS = 7;         // KPI window (matches the chart's normalization window)
 
 const PLATFORM_COLORS: Record<string, string> = {
-  anthropic: 'var(--color-text)',
-  openai: 'var(--color-accent)',
-  zhipu: 'var(--color-text-2)',
+  anthropic: '#D97757',                 // Anthropic brand-aligned orange
+  openai: 'var(--color-text)',          // ink black
+  zhipu: 'var(--color-text-2)',         // warm gray
   moonshot: 'var(--color-border)',
   google: '#A1A095',
   deepseek: '#8E8C85',
@@ -17,7 +17,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   other: '#C2C0BA',
 };
 const PLATFORM_LABELS: Record<string, string> = {
-  anthropic: 'Anthropic', openai: 'OpenAI', zhipu: 'Zhipu', moonshot: 'Moonshot',
+  anthropic: 'Anthropic', openai: 'OpenAI', zhipu: 'ZAI/zhipu', moonshot: 'Moonshot',
   google: 'Google', deepseek: 'DeepSeek', minimax: 'MiniMax', github: 'GitHub',
   local: 'Local', other: 'Other',
 };
@@ -69,10 +69,6 @@ export async function TokenPreview() {
 
       {/* Scrollable daily stacked bar chart (client component) */}
       <TokenChart daily={summary.daily} todayStr={todayStr} />
-
-      <p className="font-[family-name:var(--font-mono)] mt-3 text-[10px] text-[var(--color-text-2)]">
-        默认显示最近 {VIEW_DAYS} 天 · 左右滑动查看 {FETCH_DAYS} 天历史 · bar 高度按可见窗口归一化 · hover/长按看每天明细
-      </p>
 
       {/* Platform legend (over the recent slice) */}
       {hasData && (
