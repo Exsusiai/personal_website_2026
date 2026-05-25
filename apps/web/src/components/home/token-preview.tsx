@@ -50,43 +50,52 @@ interface StackedBarProps {
   isToday: boolean;
 }
 
+/** Minimum height (%) for a non-zero day so a small day stays visible
+ * against a large-day spike. Tunable: 6% on a 120px chart ≈ 7px nub. */
+const MIN_VISIBLE_PCT = 6;
+
 function StackedBar({ point, maxTokens, isToday }: StackedBarProps) {
-  const totalHeightPct = maxTokens > 0 ? (point.totalTokens / maxTokens) * 100 : 0;
+  const rawPct = maxTokens > 0 ? (point.totalTokens / maxTokens) * 100 : 0;
+  // Lift tiny non-zero days to MIN_VISIBLE_PCT so a 0.3% day still renders ~6%.
+  const totalHeightPct = point.totalTokens > 0 ? Math.max(MIN_VISIBLE_PCT, rawPct) : 0;
   const platforms = Object.entries(point.byPlatform).sort(
     ([a], [b]) => PLATFORM_STACK_ORDER.indexOf(a) - PLATFORM_STACK_ORDER.indexOf(b),
   );
 
-  // Tooltip body (native title attr — shows on hover desktop, long-press mobile)
+  // Tooltip body (native title attr — desktop hover, mobile long-press)
   const breakdownLines = platforms
     .map(([p, t]) => `${labelFor(p)}: ${formatTokens(t)}`)
     .join('\n');
   const tooltip = `${point.day}\nTotal: ${formatTokens(point.totalTokens)}\n${breakdownLines}\nCost: ${formatUsd(point.costUsd)}`;
 
   return (
-    <div
-      className="group relative flex h-full w-3 shrink-0 cursor-default flex-col-reverse"
-      title={tooltip}
-    >
-      {/* Each segment of the stack */}
-      {point.totalTokens > 0 ? (
-        platforms.map(([platform, tokens]) => {
-          const segPct = (tokens / point.totalTokens) * totalHeightPct;
-          return (
-            <div
-              key={platform}
-              style={{
-                height: `${segPct}%`,
-                background: colorFor(platform),
-              }}
-              className="w-full"
-            />
-          );
-        })
-      ) : (
-        /* No-data day: a faint baseline tick so the day still occupies space */
-        <div className="h-px w-full bg-[var(--color-border)] opacity-40" />
-      )}
-      {/* Today marker (subtle underline) */}
+    <div className="group relative flex flex-1 flex-col items-stretch">
+      {/* Bar fills bottom-up. Use parent's full height; stack platforms inside. */}
+      <div
+        className="relative flex h-full flex-col-reverse"
+        title={tooltip}
+      >
+        <div
+          className="flex w-full flex-col-reverse"
+          style={{ height: `${totalHeightPct}%` }}
+        >
+          {point.totalTokens > 0
+            ? platforms.map(([platform, tokens]) => (
+                <div
+                  key={platform}
+                  style={{
+                    height: `${(tokens / point.totalTokens) * 100}%`,
+                    background: colorFor(platform),
+                  }}
+                  className="w-full"
+                />
+              ))
+            : (
+              <div className="h-px w-full bg-[var(--color-border)] opacity-40" />
+            )}
+        </div>
+      </div>
+      {/* Today marker (subtle accent underline) */}
       {isToday && (
         <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[var(--color-accent)]" />
       )}
@@ -94,17 +103,17 @@ function StackedBar({ point, maxTokens, isToday }: StackedBarProps) {
   );
 }
 
+const WINDOW_DAYS = 7;
+
+const DAY_OF_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export async function TokenPreview() {
-  const summary = await getUsageSummary(30);
+  const summary = await getUsageSummary(WINDOW_DAYS);
   const hasData = summary.totalTokens > 0;
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Use the windowed max so individual day shape is comparable; if all zero, fall back to 1 to avoid /0
+  // Y-axis max: max single-day total within the window
   const maxTokens = Math.max(...summary.daily.map((d) => d.totalTokens), 1);
-
-  // Tick labels: first day + middle + last day (avoid clutter)
-  const tickIndices = [0, Math.floor(summary.daily.length / 2), summary.daily.length - 1];
-  const tickLabels = tickIndices.map((i) => summary.daily[i]?.day.slice(5) ?? ''); // MM-DD
 
   // Top 3 + Other rollup
   const top = summary.platforms.slice(0, 3);
@@ -116,12 +125,12 @@ export async function TokenPreview() {
     <div className="bg-[var(--color-bg)] p-9">
       {/* Heading + 3 KPI cards */}
       <h3 className="font-[family-name:var(--font-mono)] mb-6 text-xs uppercase tracking-[0.12em] text-[var(--color-text-2)]">
-        Token Usage
+        Token Usage · Past {WINDOW_DAYS} days
       </h3>
 
       <div className="mb-8 grid grid-cols-2 gap-5 sm:grid-cols-3">
-        <Kpi label="30d Tokens" value={hasData ? formatTokens(summary.totalTokens) : '—'} />
-        <Kpi label="30d Spend (USD eq.)" value={hasData ? formatUsd(summary.totalCostUsd) : '—'} />
+        <Kpi label={`${WINDOW_DAYS}d Tokens`} value={hasData ? formatTokens(summary.totalTokens) : '—'} />
+        <Kpi label={`${WINDOW_DAYS}d Spend (USD eq.)`} value={hasData ? formatUsd(summary.totalCostUsd) : '—'} />
         <Kpi
           label="All-time Tokens"
           value={summary.allTimeTokens > 0 ? formatTokens(summary.allTimeTokens) : '—'}
@@ -129,41 +138,47 @@ export async function TokenPreview() {
         />
       </div>
 
-      {/* Daily stacked bar chart */}
+      {/* Daily stacked bar chart — 7 wide bars, no scroll */}
       {hasData ? (
         <>
-          <div className="hairline-t hairline-b py-4">
-            <div className="overflow-x-auto">
-              <div className="flex h-[88px] items-end gap-1 px-1" style={{ minWidth: `${summary.daily.length * 16}px` }}>
-                {summary.daily.map((d) => (
-                  <StackedBar
+          <div className="hairline-t hairline-b py-5">
+            <div className="flex h-[140px] items-end gap-3">
+              {summary.daily.map((d) => (
+                <StackedBar
+                  key={d.day}
+                  point={d}
+                  maxTokens={maxTokens}
+                  isToday={d.day === todayStr}
+                />
+              ))}
+            </div>
+            {/* Day-of-week + MM-DD label per bar (chunky bars give room) */}
+            <div className="font-[family-name:var(--font-mono)] mt-3 flex gap-3 text-[10px] text-[var(--color-text-2)]">
+              {summary.daily.map((d) => {
+                const dow = DAY_OF_WEEK_LABELS[new Date(d.day + 'T00:00:00Z').getUTCDay()];
+                const md = d.day.slice(5); // MM-DD
+                const isToday = d.day === todayStr;
+                return (
+                  <div
                     key={d.day}
-                    point={d}
-                    maxTokens={maxTokens}
-                    isToday={d.day === todayStr}
-                  />
-                ))}
-              </div>
-              {/* Date tick row */}
-              <div
-                className="font-[family-name:var(--font-mono)] mt-2 flex justify-between px-1 text-[10px] text-[var(--color-text-2)]"
-                style={{ minWidth: `${summary.daily.length * 16}px` }}
-              >
-                {tickLabels.map((label, i) => (
-                  <span key={i} className={i === 1 ? 'text-center' : i === 2 ? 'text-right' : ''}>
-                    {label}
-                  </span>
-                ))}
-              </div>
+                    className={
+                      'flex-1 text-center ' +
+                      (isToday ? 'text-[var(--color-accent)]' : '')
+                    }
+                  >
+                    <div className="text-[9px] opacity-70">{dow}</div>
+                    <div>{md}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Hint */}
           <p className="font-[family-name:var(--font-mono)] mt-3 text-[10px] text-[var(--color-text-2)]">
             Hover (desktop) / long-press (mobile) any bar to see that day&apos;s per-platform breakdown.
           </p>
 
-          {/* Platform legend */}
+          {/* Platform legend (window aggregates) */}
           <div className="font-[family-name:var(--font-mono)] mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-[var(--color-text-2)]">
             {top.map((p) => (
               <span key={p.platform} className="flex items-center gap-1.5">
