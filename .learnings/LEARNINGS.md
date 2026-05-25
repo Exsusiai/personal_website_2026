@@ -274,6 +274,69 @@ useEffect(() => {
 
 ---
 
+## LRN-021 · UNIQUE 约束不能包含累积计数字段
+
+**问题**：dedup 约束 `(session_id, ts, model, input_tokens, output_tokens)` 看起来很严密，但实际**让相同 session 被多次插入**。
+
+**根因**：ccusage（以及大多数 LLM 日志统计工具）每次跑都返回**累积计数**——同一个进行中的 session 在第 1 小时是 (i=1000, o=500)，第 2 小时变成 (i=1500, o=800)。约束里有 input/output → 主键变 → 触发 INSERT 而不是 ON CONFLICT。后果：N 次 sync = N 倍数据。
+
+**实测影响**：长时间运行的 Claude Code session 被算 3-6 次，**总账膨胀 50%+**。
+
+**做法**：dedup 约束**只能含稳定 ID**（session_id + model 这种永不变的字段）。计数列必须用 UPSERT-replace 模式（`ignoreDuplicates: false` + 新数据覆盖旧的）。
+
+```sql
+-- 错误
+UNIQUE (session_id, ts, model, input_tokens, output_tokens)
+-- 正确
+UNIQUE (session_id, model)
+-- + Supabase: .upsert(events, { onConflict: 'session_id,model' /* no ignoreDuplicates */ })
+```
+
+**含义**：任何 cumulative counter 数据源（ccusage、网络流量、subscription usage），dedup key 都要严格剔除"会变的字段"。
+
+---
+
+## LRN-022 · 时间窗口 `Date.now() - N*day` 包含 N+1 个日历日
+
+**问题**：要"过去 7 天"，写 `Date.now() - 7 * 86400_000` 然后 `WHERE day >= start` —— 实际包含 **8** 个日历日（含今天）。
+
+**实测**：今天 5/25 18:00 UTC，`Date.now() - 7*86400000` = 5/18 18:00 UTC → ISO date string `"2026-05-18"`。`day >= "2026-05-18"` 包含 5/18, 5/19, ..., 5/25 = 8 天。
+
+**做法**：要"过去 N 天含今天"，用 `(days - 1)`：
+```ts
+const windowStart = new Date(Date.now() - (days - 1) * 86400_000);
+```
+
+**含义**：所有滑动窗口的 cutoff 计算要明确说"含 N 个日历日（含今天）"或"距今 N 天前的同一时刻"，二者算法不同。
+
+---
+
+## LRN-023 · 数据库日期截断 TZ 必须跟 client 日期算法 TZ 一致
+
+**问题**：物化视图用 `DATE_TRUNC('day', ts AT TIME ZONE 'Asia/Shanghai')` 存 day 列，但 client 端 `Date.now().toISOString().slice(0, 10)` 拿 UTC 日期。
+
+**结果**：UTC 16:00-23:59 是 Shanghai 次日 00:00-07:59。这 8 小时内任何 client 端"今天"是 UTC date X，但 DB `day` 列是 X+1。`dailyMap.get(dayStr)` miss、`.gte('day', ...)` 漏行。
+
+**做法**：跨 TZ 的 day 字符串，必须用同一个 TZ 算：
+```ts
+function shanghaiDateStr(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(d);
+}
+```
+`en-CA` locale 输出格式正好是 `YYYY-MM-DD`，方便。
+
+**含义**：DB 端做了 TZ truncation 的设计，所有 client 端 day 数学都要在同一个 TZ 里做。检查所有 `.toISOString().slice(0, 10)` 调用是否合理。
+
+---
+
+## LRN-024 · `Supabase upsert ignoreDuplicates: true` 静默吞掉成功插入
+
+**问题**：用 `ignoreDuplicates: true` 时，PostgREST 返回 `data: []` （即使真的有新行插入）。代码用 `data.length === 0` 当作"无新数据"信号 → 跳过后续动作（如刷新物化视图）。
+
+**做法**：要么改用 `ignoreDuplicates: false`（UPSERT-replace 默认行为，data 含被影响行）；要么不依赖 data.length 判断是否有插入，改用别的信号。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown
