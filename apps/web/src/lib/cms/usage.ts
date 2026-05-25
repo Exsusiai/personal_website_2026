@@ -42,6 +42,17 @@ const EMPTY_SUMMARY: UsageSummary = {
  *
  * Returns EMPTY_SUMMARY (graceful degradation) if Supabase isn't reachable.
  */
+/** Format a Date as YYYY-MM-DD in the Asia/Shanghai TZ — must match how
+ * usage_daily's day column is truncated (see migration 0004). Using UTC dates
+ * here causes off-by-one boundary skips between 16:00-23:59 UTC each day. */
+function shanghaiDateStr(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(d);
+}
+
+function shanghaiDateNDaysAgo(n: number): string {
+  return shanghaiDateStr(new Date(Date.now() - n * 86400_000));
+}
+
 export async function getUsageSummary(days = 30): Promise<UsageSummary> {
   try {
     const supabase = getSupabaseAdmin();
@@ -53,8 +64,9 @@ export async function getUsageSummary(days = 30): Promise<UsageSummary> {
       .order('day', { ascending: true });
     if (error) throw error;
 
-    const windowStart = new Date(Date.now() - days * 86400_000);
-    const windowStartStr = windowStart.toISOString().slice(0, 10);
+    // Window covers `days` calendar days INCLUDING today → use days-1 offset.
+    // All date math in Asia/Shanghai to match the view's day truncation.
+    const windowStartStr = shanghaiDateNDaysAgo(days - 1);
 
     // Per-day with platform breakdown (rolling window)
     const dailyMap = new Map<string, DailyPoint>();
@@ -115,10 +127,10 @@ export async function getUsageSummary(days = 30): Promise<UsageSummary> {
  */
 function fillDays(dailyMap: Map<string, DailyPoint>, days: number): DailyPoint[] {
   const out: DailyPoint[] = [];
-  // Iterate from oldest to newest within the window
+  // Iterate from oldest to newest within the window, using Shanghai-local
+  // date strings to match the view's day truncation.
   for (let offset = days - 1; offset >= 0; offset--) {
-    const d = new Date(Date.now() - offset * 86400_000);
-    const dayStr = d.toISOString().slice(0, 10);
+    const dayStr = shanghaiDateNDaysAgo(offset);
     out.push(
       dailyMap.get(dayStr) ?? { day: dayStr, totalTokens: 0, costUsd: 0, byPlatform: {} },
     );

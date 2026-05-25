@@ -48,11 +48,13 @@ export async function POST(req: Request) {
   }
 
   const supabase = getSupabaseAdmin();
+  // UPSERT-replace: when (session_id, model) collides, overwrite with the
+  // newer cumulative counters from ccusage. Without this, growing in-progress
+  // sessions caused N rows per session = ~50% over-count.
   const { data, error } = await supabase
     .from('usage_events')
     .upsert(parsed.data.events, {
-      onConflict: 'session_id,ts,model,input_tokens,output_tokens',
-      ignoreDuplicates: true,
+      onConflict: 'session_id,model',
     })
     .select('id');
 

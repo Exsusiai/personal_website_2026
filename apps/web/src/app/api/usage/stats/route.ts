@@ -4,6 +4,14 @@ import { getSupabaseAdmin } from '@/lib/db/supabase';
 export const runtime = 'nodejs';
 export const revalidate = 300;  // ISR for the API too
 
+/** Shanghai-local YYYY-MM-DD N days ago — must match how usage_daily's
+ * day column is truncated (Asia/Shanghai). Using UTC dates here would
+ * misalign by one day during 16:00-23:59 UTC each day. */
+function shanghaiDateNDaysAgo(n: number): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' })
+    .format(new Date(Date.now() - n * 86400_000));
+}
+
 interface PlatformBucket {
   platform: string;
   total_tokens: number;
@@ -26,7 +34,7 @@ export async function GET(req: Request) {
   const { data: dailyRows, error: dailyErr } = await supabase
     .from('usage_daily')
     .select('day, total_tokens, cost_usd')
-    .gte('day', new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10))
+    .gte('day', shanghaiDateNDaysAgo(days - 1))
     .order('day', { ascending: true });
 
   if (dailyErr) {
@@ -49,7 +57,7 @@ export async function GET(req: Request) {
   const { data: platformRows, error: platformErr } = await supabase
     .from('usage_daily')
     .select('platform, total_tokens, cost_usd')
-    .gte('day', new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10));
+    .gte('day', shanghaiDateNDaysAgo(days - 1));
 
   if (platformErr) {
     return NextResponse.json({ error: platformErr.message }, { status: 500 });
