@@ -1,4 +1,5 @@
 import React from 'react';
+import { safeHref } from './safe-url';
 
 export interface RichTextAnnotations {
   bold: boolean;
@@ -72,11 +73,12 @@ function renderSpan(item: RichTextItem, index: number): React.ReactNode {
     );
   }
 
-  if (href) {
+  const checkedHref = safeHref(href);
+  if (checkedHref) {
     node = (
       <a
         key={`a-${index}`}
-        href={href}
+        href={checkedHref}
         className="underline underline-offset-2 hover:text-[var(--color-accent)]"
         target="_blank"
         rel="noopener noreferrer"

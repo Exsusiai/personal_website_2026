@@ -1,5 +1,6 @@
 import { getNotionClient, withRetry } from './notion-client';
 import { getEnv } from '@/lib/env';
+import { queryAll } from './paginated-query';
 import {
   parseTitle,
   parseRichText,
@@ -33,26 +34,20 @@ export interface ListThinkingOpts {
 }
 
 export async function listThinking(opts: ListThinkingOpts = {}): Promise<Article[]> {
-  const client = getNotionClient();
   const andFilters: unknown[] = [{ property: 'Published', checkbox: { equals: true } }];
   if (opts.tag) {
     andFilters.push({ property: 'Tags', multi_select: { contains: opts.tag } });
   }
 
-  const resp = await withRetry(() =>
-    client.dataSources.query({
-      data_source_id: getEnv().NOTION_DS_THINKING,
-      filter: { and: andFilters } as never,
+  return queryAll(
+    {
+      dataSourceId: getEnv().NOTION_DS_THINKING,
+      filter: { and: andFilters },
       sorts: [{ property: 'PublishedDate', direction: 'descending' }],
-      page_size: opts.limit ?? 100,
-    }),
+      limit: opts.limit,
+    },
+    mapArticleFromNotion,
   );
-
-  return resp.results
-    .filter(
-      (r): r is typeof r & { properties: Record<string, unknown> } => 'properties' in r,
-    )
-    .map(mapArticleFromNotion);
 }
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {

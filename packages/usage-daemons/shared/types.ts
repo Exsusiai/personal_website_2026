@@ -22,6 +22,11 @@ export interface UsageEvent {
 }
 
 export interface IngestResponse {
-  inserted: number;
-  skipped_duplicates: number;
+  /**
+   * Rows affected by the UPSERT (covers both new inserts AND in-place updates
+   * of cumulative ccusage snapshots). Renamed from `inserted` to make the
+   * UPSERT-replace semantics explicit. Prior name implied "rows newly added",
+   * which has been wrong since the dedup migration.
+   */
+  affected: number;
 }

@@ -2,7 +2,7 @@ import type { UsageEvent, IngestResponse } from './types.js';
 import { getEnv } from './env.js';
 
 export async function postEvents(events: UsageEvent[]): Promise<IngestResponse> {
-  if (events.length === 0) return { inserted: 0, skipped_duplicates: 0 };
+  if (events.length === 0) return { affected: 0 };
   const { INGEST_URL, INGEST_SECRET } = getEnv();
   const res = await fetch(INGEST_URL, {
     method: 'POST',

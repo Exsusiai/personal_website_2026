@@ -1,32 +1,9 @@
+import 'server-only';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
+import { shanghaiDateNDaysAgo } from '@/lib/date/shanghai';
+import type { DailyPoint, PlatformBucket, UsageSummary } from './usage-format';
 
-export interface UsageSummary {
-  /** Rolling-window totals (default 30 days) */
-  totalTokens: number;
-  totalCostUsd: number;
-  /** All-time totals across every event ever stored */
-  allTimeTokens: number;
-  allTimeCostUsd: number;
-  /** Aggregate per platform within the rolling window */
-  platforms: PlatformBucket[];
-  /** Per-day series for the rolling window, with platform breakdown */
-  daily: DailyPoint[];
-  rangeDays: number;
-}
-
-export interface PlatformBucket {
-  platform: string;
-  totalTokens: number;
-  costUsd: number;
-  pct: number;
-}
-
-export interface DailyPoint {
-  day: string;                           // YYYY-MM-DD
-  totalTokens: number;
-  costUsd: number;
-  byPlatform: Record<string, number>;    // platform → tokens for stack chart
-}
+export type { DailyPoint, PlatformBucket, UsageSummary } from './usage-format';
 
 const EMPTY_SUMMARY: UsageSummary = {
   totalTokens: 0, totalCostUsd: 0,
@@ -40,19 +17,8 @@ const EMPTY_SUMMARY: UsageSummary = {
  * in JS because the chart needs per-day per-platform breakdown and we want
  * one network round-trip.
  *
- * Returns EMPTY_SUMMARY (graceful degradation) if Supabase isn't reachable.
+ * On failure: logs server-side and returns EMPTY_SUMMARY (graceful degradation).
  */
-/** Format a Date as YYYY-MM-DD in the Asia/Shanghai TZ — must match how
- * usage_daily's day column is truncated (see migration 0004). Using UTC dates
- * here causes off-by-one boundary skips between 16:00-23:59 UTC each day. */
-function shanghaiDateStr(d: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(d);
-}
-
-function shanghaiDateNDaysAgo(n: number): string {
-  return shanghaiDateStr(new Date(Date.now() - n * 86400_000));
-}
-
 export async function getUsageSummary(days = 30): Promise<UsageSummary> {
   try {
     const supabase = getSupabaseAdmin();
@@ -115,7 +81,12 @@ export async function getUsageSummary(days = 30): Promise<UsageSummary> {
       allTimeTokens, allTimeCostUsd: allTimeCost,
       platforms, daily, rangeDays: days,
     };
-  } catch {
+  } catch (err) {
+    // Preserve graceful UI degradation, but surface the cause in server logs so
+    // we don't confuse a backend failure with a real zero. (Prior behavior was
+    // a silent empty result, which made misconfiguration invisible.)
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[usage] getUsageSummary failed: ${msg}`);
     return EMPTY_SUMMARY;
   }
 }
@@ -136,17 +107,4 @@ function fillDays(dailyMap: Map<string, DailyPoint>, days: number): DailyPoint[]
     );
   }
   return out;
-}
-
-export function formatTokens(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(Math.round(n));
-}
-
-export function formatUsd(n: number): string {
-  if (n >= 1000) return `$${(n / 1000).toFixed(2)}K`;
-  if (n >= 10) return `$${n.toFixed(0)}`;
-  return `$${n.toFixed(2)}`;
 }

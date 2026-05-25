@@ -337,6 +337,54 @@ function shanghaiDateStr(d: Date): string {
 
 ---
 
+## LRN-025 · Postgres `UNIQUE` 对 NULL 不视为相等 → "看似有约束实则零拦截"
+
+**问题**：`ALTER TABLE usage_events ADD CONSTRAINT ... UNIQUE (session_id, model)`。代码上每次 24h 滚动 poll 都重新 UPSERT 同一批 (ts, model) bucket，预期被去重。实际：org pollers 用 `session_id: null`，因此每次 poll 又 insert 一份新行，物化视图被持续放大。
+
+**根因**：Postgres 标准把 `NULL` 视为"未知"，因此 `(NULL, 'gpt-4o') ≠ (NULL, 'gpt-4o')`，约束放行。
+
+**做法**：要么 PG15+ 用 `UNIQUE NULLS NOT DISTINCT (...)`，要么所有源都强制非 null —— 用确定性 ID 如 `<provider>-org:<unix_epoch_seconds>:<model>`。本项目选后者并配合迁移 0006 把历史 NULL 行 dedup + 回填。
+
+**含义**：任何 UPSERT 设计如果 conflict 列里可能出现 NULL，先想清楚 Postgres 的 NULL 语义。检查 supabase `.upsert({ onConflict })` 用到的列是否都 NOT NULL。
+
+---
+
+## LRN-026 · `.upsert(...).select('id')` 同时返回 insert 和 update 行
+
+**问题**：旧 ingest API 报告 `inserted = data.length; skipped_duplicates = events.length - inserted`。改成 UPSERT-replace 后 `data` 长度永远 ≈ events.length，`skipped_duplicates` 总是 0，daemon 日志失真。
+
+**根因**：UPSERT 没有"skip" —— conflict 时是 update。`.select('id')` 返回的是"被影响的行"，包含 insert 与 update。
+
+**做法**：字段重命名为 `affected` 表达 UPSERT 语义。如果一定要区分 insert vs update，需要用 `xmin = txid_current()::text::xid` 或 `RETURNING (xmax = 0) AS inserted` 这类技巧（PostgREST 难支持）。
+
+**含义**：UPSERT 的可观测性比 INSERT IGNORE 弱，重要的统计指标改用 daemon 端 dry-run 比对，而不是依赖 ingest 响应。
+
+---
+
+## LRN-027 · `next/image` host 必须 allowlist，Notion external image 会运行时崩页
+
+**问题**：Notion image block 的 `external.url` 可以是任意 host。若该 host 不在 `next.config.ts` 的 `images.remotePatterns` 里，`<Image src={url} />` 在渲染时抛错，整个页面 500。
+
+**根因**：Next.js 强制要求远程图片的 host 显式列出，未列出时不走优化器、直接拒绝。错误是运行时的，不是构建期。
+
+**做法**：渲染前先用 `isAllowedImageHost(url)` 校验，未在白名单则降级为纯链接（`safeHref` 后的 `<a>`）。`safe-url.ts` 与 `next.config.ts` 必须保持同步，加注释提醒。
+
+**含义**：任何来自 CMS / 用户输入的 URL，进入 `<Image>` 之前都要 allowlist；同理任何 href 都要 scheme allowlist（`http/https/mailto/tel`），防御 `javascript:` 注入。
+
+---
+
+## LRN-028 · Notion select 字段 `as UnionType` 会撞 select 改名
+
+**问题**：`type: (parseSelect(...) ?? 'Skill') as ResumeType` 直接断言成 union 类型，再 `bundle[item.type.toLowerCase()].push(...)`。Notion 上把 select 选项 "Experience" 改成 "Experiences"，TypeScript 编译期看不见，运行时 `bundle.experiences = undefined`，整页崩。
+
+**根因**：`as` 是无运行时检查的强转。Notion 的 select 可以被随时改名 / 新增，CMS 与代码之间没有 schema lock。
+
+**做法**：写 `parseEnum(value, allowed, fallback, fieldName?)` 在解析阶段 fail-soft —— 不在 allow list 就 fallback + `console.warn`。所有 Notion select 都走它，把"未知值"挡在数据层。
+
+**含义**：把 Notion 当成 CMS 时，每个 select / status / tag-with-grouping 都是潜在的 schema break point。`as X` 替换成显式 enum 验证 + tests，CMS 改 schema 不再有静默页面崩溃风险。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown

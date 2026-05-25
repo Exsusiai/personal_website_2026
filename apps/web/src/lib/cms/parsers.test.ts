@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   parseTitle, parseRichText, parseSelect, parseMultiSelect,
-  parseNumber, parseCheckbox, parseUrl, parseDate, parseFiles,
+  parseNumber, parseCheckbox, parseUrl, parseDate, parseFiles, parseEnum,
 } from './parsers';
 
 describe('parseTitle', () => {
@@ -96,5 +96,28 @@ describe('parseRichText', () => {
       rich_text: [{ plain_text: 'Hello ' }, { plain_text: 'world' }],
     };
     expect(parseRichText(prop as any)).toBe('Hello world');
+  });
+});
+
+describe('parseEnum', () => {
+  const ALLOWED = ['Experience', 'Education', 'Skill', 'Award'] as const;
+
+  it('returns the value when it is in the allowed list', () => {
+    expect(parseEnum('Education', ALLOWED, 'Skill')).toBe('Education');
+  });
+
+  it('returns fallback (and warns) for an unknown value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseEnum('Experiences', ALLOWED, 'Skill', 'Resume.Type')).toBe('Skill');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('returns fallback without warning when value is null/undefined', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseEnum(null, ALLOWED, 'Skill')).toBe('Skill');
+    expect(parseEnum(undefined, ALLOWED, 'Skill')).toBe('Skill');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

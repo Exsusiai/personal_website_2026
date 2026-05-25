@@ -5,6 +5,9 @@ Run migrations **in order** from the Supabase SQL editor (Project → SQL Editor
 1. `migrations/0001_usage_events.sql` — main events table + RLS enabled
 2. `migrations/0002_usage_daily_view.sql` — materialized view + access control
 3. `migrations/0003_notion_image_cache.sql` — Phase 5 image proxy table + RLS enabled
+4. `migrations/0004_usage_daily_include_cache.sql` — fold `cache_read_tokens` + `cache_write_tokens` into the view's total
+5. `migrations/0005_dedup_by_session_model.sql` — replace dedup constraint with `(session_id, model)` so cumulative ccusage snapshots UPSERT instead of duplicating
+6. `migrations/0006_dedup_org_pollers.sql` — clean up NULL-session org-poller duplicates, retrofit deterministic IDs, widen UNIQUE to `(source, session_id, model)`
 
 Or via the Supabase CLI:
 

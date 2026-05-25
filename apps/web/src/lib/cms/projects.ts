@@ -1,5 +1,6 @@
 import { getNotionClient, withRetry } from './notion-client';
 import { getEnv } from '@/lib/env';
+import { queryAll } from './paginated-query';
 import {
   parseTitle,
   parseRichText,
@@ -9,8 +10,12 @@ import {
   parseCheckbox,
   parseUrl,
   parseFiles,
+  parseEnum,
 } from './parsers';
 import type { Project } from './types';
+
+const PROJECT_TYPES: readonly Project['type'][] = ['Software', 'Mechanical', 'AI', 'Other'];
+const PROJECT_STATUSES: readonly Project['status'][] = ['Active', 'Archived', 'Draft'];
 
 export function mapProjectFromNotion(page: {
   id: string;
@@ -21,8 +26,8 @@ export function mapProjectFromNotion(page: {
     id: page.id,
     slug: parseRichText(p['Slug'] as never),
     title: parseTitle(p['Title'] as never),
-    type: (parseSelect(p['Type'] as never) ?? 'Other') as Project['type'],
-    status: (parseSelect(p['Status'] as never) ?? 'Draft') as Project['status'],
+    type: parseEnum(parseSelect(p['Type'] as never), PROJECT_TYPES, 'Other', 'Project.Type'),
+    status: parseEnum(parseSelect(p['Status'] as never), PROJECT_STATUSES, 'Draft', 'Project.Status'),
     year: parseNumber(p['Year'] as never) ?? 0,
     summary: parseRichText(p['Summary'] as never),
     coverUrl: parseFiles(p['Cover'] as never),
@@ -42,7 +47,6 @@ export interface ListProjectsOpts {
 }
 
 export async function listProjects(opts: ListProjectsOpts = {}): Promise<Project[]> {
-  const client = getNotionClient();
   const filter: { and: unknown[] } = {
     and: [{ property: 'Published', checkbox: { equals: true } }],
   };
@@ -50,20 +54,15 @@ export async function listProjects(opts: ListProjectsOpts = {}): Promise<Project
     filter.and.push({ property: 'Featured', checkbox: { equals: opts.featured } });
   }
 
-  const resp = await withRetry(() =>
-    client.dataSources.query({
-      data_source_id: getEnv().NOTION_DS_PROJECTS,
-      filter: filter as never,
+  return queryAll(
+    {
+      dataSourceId: getEnv().NOTION_DS_PROJECTS,
+      filter,
       sorts: [{ property: 'Order', direction: 'ascending' }],
-      page_size: opts.limit ?? 100,
-    }),
+      limit: opts.limit,
+    },
+    mapProjectFromNotion,
   );
-
-  return resp.results
-    .filter(
-      (r): r is typeof r & { properties: Record<string, unknown> } => 'properties' in r,
-    )
-    .map(mapProjectFromNotion);
 }
 
 export async function getProjectBySlug(slug: string): Promise<Project | null> {

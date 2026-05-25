@@ -27,6 +27,30 @@ export function parseSelect(prop: NotionProperty): string | null {
   return sel?.name ?? null;
 }
 
+/**
+ * Validate a select value against a closed union. Unknown / renamed options in
+ * Notion would otherwise be cast (via `as ResumeType` etc.) into a typed value
+ * that later crashes consumers — e.g. `bundle[item.type.toLowerCase()].push(...)`
+ * indexes into `undefined`. This helper logs the offending value and returns a
+ * safe fallback so the rest of the page can still render.
+ */
+export function parseEnum<T extends string>(
+  value: string | null | undefined,
+  allowed: readonly T[],
+  fallback: T,
+  fieldName?: string,
+): T {
+  if (value && (allowed as readonly string[]).includes(value)) {
+    return value as T;
+  }
+  if (value) {
+    console.warn(
+      `[cms] unknown ${fieldName ?? 'enum'} value: "${value}" — falling back to "${fallback}"`,
+    );
+  }
+  return fallback;
+}
+
 export function parseMultiSelect(prop: NotionProperty): string[] {
   const arr = (prop as { multi_select?: { name: string }[] }).multi_select ?? [];
   return arr.map((s) => s.name);

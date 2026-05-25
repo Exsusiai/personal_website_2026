@@ -205,7 +205,7 @@ async function main() {
 
   if (events.length > 0) {
     const result = await postEvents(events);
-    console.log(`[ccusage-sync] inserted=${result.inserted} skipped_duplicates=${result.skipped_duplicates}`);
+    console.log(`[ccusage-sync] affected=${result.affected}`);
   }
 
   await writeState({ lastSyncedAt: new Date().toISOString() });

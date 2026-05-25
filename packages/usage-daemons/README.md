@@ -22,7 +22,20 @@ Always-on device (NAS/Mac mini/VM)
 ```
 
 All three idempotently UPSERT into `usage_events` using the unique constraint
-`(session_id, ts, model, input_tokens, output_tokens)`.
+`(source, session_id, model)`.
+
+- `source` separates daemons so e.g. `ccusage` and `openai-usage-api` rows cannot
+  collide on coincidentally-equal session ids.
+- For cumulative-snapshot sources (`ccusage`), repeated runs overwrite the
+  same row with the latest cumulative counters.
+- For org pollers (`openai-usage-api`, `anthropic-usage-api`), each daemon
+  mints a deterministic `session_id` of the form
+  `<provider>-org:<unix_epoch_seconds>:<model>`. Earlier versions used
+  `session_id: null` which bypassed the UNIQUE constraint (Postgres treats
+  NULLs as distinct) — see `supabase/migrations/0006_dedup_org_pollers.sql`.
+
+Every production source MUST emit a non-null `session_id`. New event-style
+sources should pick a stable identifier so they UPSERT instead of accumulating.
 
 ## Setup
 

@@ -48,13 +48,15 @@ export async function POST(req: Request) {
   }
 
   const supabase = getSupabaseAdmin();
-  // UPSERT-replace: when (session_id, model) collides, overwrite with the
-  // newer cumulative counters from ccusage. Without this, growing in-progress
-  // sessions caused N rows per session = ~50% over-count.
+  // UPSERT-replace on (source, session_id, model). For cumulative snapshot sources
+  // (ccusage), the newer counters overwrite older ones. For org-poller sources, the
+  // deterministic session_id ensures repeated rolling polls of the same bucket
+  // overwrite instead of duplicating. `source` is in the key so unrelated sources
+  // never collide even if they happen to mint the same session_id by coincidence.
   const { data, error } = await supabase
     .from('usage_events')
     .upsert(parsed.data.events, {
-      onConflict: 'session_id,model',
+      onConflict: 'source,session_id,model',
     })
     .select('id');
 
@@ -66,17 +68,19 @@ export async function POST(req: Request) {
   // TokenPreview reflects new data within seconds (instead of waiting for a
   // separate cron). Failure here doesn't fail the ingest — events are
   // already committed.
-  const inserted = data?.length ?? 0;
+  // `affected` = inserts + updates (UPSERT-replace; .select('id') returns both).
+  // We no longer report `skipped_duplicates` because UPSERT never "skips" —
+  // every conflict overwrites instead — so the old field would always be 0.
+  const affected = data?.length ?? 0;
   let refreshed: 'ok' | 'failed' | 'skipped' = 'skipped';
-  if (inserted > 0) {
+  if (affected > 0) {
     const { error: refreshErr } = await supabase.rpc('refresh_usage_daily');
     refreshed = refreshErr ? 'failed' : 'ok';
     if (refreshErr) console.warn(`[ingest] view refresh failed: ${refreshErr.message}`);
   }
 
   return NextResponse.json({
-    inserted,
-    skipped_duplicates: parsed.data.events.length - inserted,
+    affected,
     view_refresh: refreshed,
   });
 }

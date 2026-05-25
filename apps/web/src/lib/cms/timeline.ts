@@ -1,7 +1,9 @@
 import { getNotionClient, withRetry } from './notion-client';
 import { getEnv } from '@/lib/env';
-import { parseTitle, parseSelect, parseNumber, parseFiles } from './parsers';
+import { parseTitle, parseSelect, parseNumber, parseFiles, parseEnum } from './parsers';
 import type { TimelineNode, TimelineType } from './types';
+
+const TIMELINE_TYPES: readonly TimelineType[] = ['Career', 'Education', 'Project', 'Personal', 'Milestone'];
 
 export function mapTimelineFromNotion(page: {
   id: string;
@@ -13,7 +15,7 @@ export function mapTimelineFromNotion(page: {
     year: parseNumber(p['Year'] as never) ?? 0,
     month: parseNumber(p['Month'] as never),
     title: parseTitle(p['Title'] as never),
-    type: (parseSelect(p['Type'] as never) ?? 'Milestone') as TimelineType,
+    type: parseEnum(parseSelect(p['Type'] as never), TIMELINE_TYPES, 'Milestone', 'Timeline.Type'),
     coverUrl: parseFiles(p['Cover'] as never),
     order: parseNumber(p['Order'] as never) ?? 999,
   };

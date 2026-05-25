@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { formatTokens, formatUsd, type DailyPoint } from '@/lib/cms/usage';
+import { formatTokens, formatUsd, type DailyPoint } from '@/lib/cms/usage-format';
 
 /**
  * Fixed bar dimensions. Choose so that

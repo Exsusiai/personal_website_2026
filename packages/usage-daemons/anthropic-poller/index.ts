@@ -57,20 +57,28 @@ async function fetchAnthropicUsage(apiKey: string, sinceIso: string): Promise<An
 }
 
 function toEvents(buckets: AnthropicUsageBucket[], device: string): UsageEvent[] {
-  return buckets.map<UsageEvent>((b) => ({
-    ts: b.starting_at,
-    device,
-    platform: 'anthropic',
-    model: b.model ?? 'unknown',
-    input_tokens: b.input_tokens,
-    output_tokens: b.output_tokens,
-    cache_read_tokens: b.cache_read_input_tokens ?? 0,
-    cache_write_tokens: b.cache_creation_input_tokens ?? 0,
-    cost_usd: 0,            // Anthropic usage API doesn't return cost directly — backfill from cost_report API in future
-    session_id: null,
-    project_path: null,
-    source: 'anthropic-usage-api',
-  }));
+  return buckets.map<UsageEvent>((b) => {
+    const model = b.model ?? 'unknown';
+    // Use unix-epoch-seconds so SQL retrofit (EXTRACT(EPOCH FROM ts)) produces an
+    // identical id. ISO-string variants would diverge between JS (.000Z millis) and
+    // raw API strings (often missing millis).
+    const startSec = Math.floor(new Date(b.starting_at).getTime() / 1000);
+    return {
+      ts: b.starting_at,
+      device,
+      platform: 'anthropic',
+      model,
+      input_tokens: b.input_tokens,
+      output_tokens: b.output_tokens,
+      cache_read_tokens: b.cache_read_input_tokens ?? 0,
+      cache_write_tokens: b.cache_creation_input_tokens ?? 0,
+      cost_usd: 0,            // Anthropic usage API doesn't return cost directly — backfill from cost_report API in future
+      // Deterministic ID — see openai-poller for rationale (NULL session_id breaks UPSERT dedup).
+      session_id: `anthropic-org:${startSec}:${model}`,
+      project_path: null,
+      source: 'anthropic-usage-api',
+    };
+  });
 }
 
 async function main() {
@@ -89,7 +97,7 @@ async function main() {
 
   if (events.length > 0) {
     const result = await postEvents(events);
-    console.log(`[anthropic-poller] inserted=${result.inserted} skipped_duplicates=${result.skipped_duplicates}`);
+    console.log(`[anthropic-poller] affected=${result.affected}`);
   }
   console.log(`[anthropic-poller] done`);
 }

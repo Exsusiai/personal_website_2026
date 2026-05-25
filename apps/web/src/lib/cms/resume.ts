@@ -1,7 +1,9 @@
 import { getNotionClient, withRetry } from './notion-client';
 import { getEnv } from '@/lib/env';
-import { parseTitle, parseRichText, parseSelect, parseMultiSelect, parseNumber, parseDate } from './parsers';
+import { parseTitle, parseRichText, parseSelect, parseMultiSelect, parseNumber, parseDate, parseEnum } from './parsers';
 import type { ResumeItem, ResumeBundle, ResumeType } from './types';
+
+const RESUME_TYPES: readonly ResumeType[] = ['Experience', 'Education', 'Skill', 'Award'];
 
 export function mapResumeFromNotion(page: {
   id: string;
@@ -11,7 +13,7 @@ export function mapResumeFromNotion(page: {
   const locationText = parseRichText(p['Location'] as never);
   return {
     id: page.id,
-    type: (parseSelect(p['Type'] as never) ?? 'Skill') as ResumeType,
+    type: parseEnum(parseSelect(p['Type'] as never), RESUME_TYPES, 'Skill', 'Resume.Type'),
     title: parseTitle(p['Title'] as never),
     org: parseRichText(p['Org'] as never),
     location: locationText.length > 0 ? locationText : null,
@@ -30,6 +32,8 @@ export function groupResumeItems(items: ResumeItem[]): ResumeBundle {
     award: [],
   };
   for (const item of items) {
+    // type already validated against RESUME_TYPES at parse time; the lowercase
+    // form is therefore guaranteed to be a key of ResumeBundle.
     const key = item.type.toLowerCase() as keyof ResumeBundle;
     bundle[key].push(item);
   }

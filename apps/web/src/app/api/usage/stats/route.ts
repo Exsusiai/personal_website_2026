@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
+import { shanghaiDateNDaysAgo } from '@/lib/date/shanghai';
 
 export const runtime = 'nodejs';
 export const revalidate = 300;  // ISR for the API too
-
-/** Shanghai-local YYYY-MM-DD N days ago — must match how usage_daily's
- * day column is truncated (Asia/Shanghai). Using UTC dates here would
- * misalign by one day during 16:00-23:59 UTC each day. */
-function shanghaiDateNDaysAgo(n: number): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' })
-    .format(new Date(Date.now() - n * 86400_000));
-}
 
 interface PlatformBucket {
   platform: string;
@@ -24,9 +17,17 @@ interface DailyPoint {
   cost_usd: number;
 }
 
+/** Parse the `days` query param. Non-numeric inputs (e.g. ?days=abc) used to
+ * propagate as NaN into Date math and crash with RangeError. Fall back to 30. */
+function parseDays(raw: string | null): number {
+  const n = Number(raw ?? '30');
+  if (!Number.isFinite(n)) return 30;
+  return Math.min(Math.max(Math.floor(n), 1), 365);
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? '30'), 1), 365);
+  const days = parseDays(url.searchParams.get('days'));
 
   const supabase = getSupabaseAdmin();
 

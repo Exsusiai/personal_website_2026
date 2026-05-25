@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { RichText, type RichTextItem } from './rich-text';
 import { CodeBlock } from './code-block';
 import { Callout } from './callout';
+import { safeHref, isAllowedImageHost } from './safe-url';
 import type { NotionBlock } from '@/lib/cms/blocks';
 
 // Forward-declare to avoid circular import at module evaluation time.
@@ -135,6 +136,29 @@ function BlockImage({ block }: { block: NotionBlock }): React.JSX.Element {
     return <div className="my-4 text-sm text-[var(--color-text-2)]">[Image unavailable]</div>;
   }
 
+  // External Notion images can use arbitrary hosts. next/image throws at render
+  // time if the host isn't on `images.remotePatterns`. Fall back to a plain link
+  // so the page still renders for unrecognized hosts.
+  if (!isAllowedImageHost(url)) {
+    const href = safeHref(url);
+    return (
+      <figure className="my-6">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm underline underline-offset-2 hover:text-[var(--color-accent)]"
+          >
+            [External image: {altText}]
+          </a>
+        ) : (
+          <span className="text-sm text-[var(--color-text-2)]">[External image: {altText}]</span>
+        )}
+      </figure>
+    );
+  }
+
   return (
     <figure className="my-6">
       <Image
@@ -171,17 +195,22 @@ function Bookmark({ block }: { block: NotionBlock }): React.JSX.Element {
   const url = bm?.url ?? '';
   const captionSpans = bm?.caption ?? [];
   const label = captionSpans.length > 0 ? captionSpans.map((s) => s.plain_text).join('') : url;
+  const href = safeHref(url);
 
   return (
     <div className="my-4 rounded border border-[var(--color-border)] p-3">
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-sm underline underline-offset-2 hover:text-[var(--color-accent)]"
-      >
-        {label}
-      </a>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm underline underline-offset-2 hover:text-[var(--color-accent)]"
+        >
+          {label}
+        </a>
+      ) : (
+        <span className="text-sm text-[var(--color-text-2)]">{label}</span>
+      )}
     </div>
   );
 }

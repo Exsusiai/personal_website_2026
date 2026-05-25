@@ -59,15 +59,19 @@ function toEvents(buckets: OpenAIBucket[], device: string): UsageEvent[] {
   for (const b of buckets) {
     const isoStart = new Date(b.start_time * 1000).toISOString();
     for (const r of b.results) {
+      const model = r.model ?? 'unknown';
       out.push({
         ts: isoStart,
         device,
         platform: 'openai',
-        model: r.model ?? 'unknown',
+        model,
         input_tokens: r.input_tokens,
         output_tokens: r.output_tokens,
         cost_usd: 0,                    // backfill from /v1/organization/costs in future
-        session_id: null,
+        // Deterministic ID so repeated rolling polls UPSERT instead of duplicating:
+        // Postgres UNIQUE(session_id, model) treats NULLs as distinct, so a null
+        // session_id would let every 24h poll insert another copy of the same bucket.
+        session_id: `openai-org:${b.start_time}:${model}`,
         source: 'openai-usage-api',
       });
     }
@@ -90,7 +94,7 @@ async function main() {
 
   if (events.length > 0) {
     const result = await postEvents(events);
-    console.log(`[openai-poller] inserted=${result.inserted} skipped_duplicates=${result.skipped_duplicates}`);
+    console.log(`[openai-poller] affected=${result.affected}`);
   }
   console.log(`[openai-poller] done`);
 }

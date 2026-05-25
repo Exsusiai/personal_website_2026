@@ -1,7 +1,9 @@
 import { getNotionClient, withRetry } from './notion-client';
 import { getEnv } from '@/lib/env';
-import { parseTitle, parseRichText, parseSelect, parseNumber, parseUrl } from './parsers';
+import { parseTitle, parseRichText, parseSelect, parseNumber, parseUrl, parseEnum } from './parsers';
 import type { UsesItem, UsesGrouped, UsesCategory } from './types';
+
+const USES_CATEGORIES: readonly UsesCategory[] = ['Hardware', 'Software', 'Service'];
 
 export function mapUsesFromNotion(page: {
   id: string;
@@ -14,7 +16,7 @@ export function mapUsesFromNotion(page: {
   return {
     id: page.id,
     title: parseTitle(p['Title'] as never),
-    category: (parseSelect(p['Category'] as never) ?? 'Software') as UsesCategory,
+    category: parseEnum(parseSelect(p['Category'] as never), USES_CATEGORIES, 'Software', 'Uses.Category'),
     subcategory: subcategoryText.length > 0 ? subcategoryText : null,
     brand: brandText.length > 0 ? brandText : null,
     note: noteText.length > 0 ? noteText : null,
@@ -26,6 +28,7 @@ export function mapUsesFromNotion(page: {
 export function groupUsesItems(items: UsesItem[]): UsesGrouped {
   const grouped: UsesGrouped = { hardware: [], software: [], service: [] };
   for (const item of items) {
+    // category already validated against USES_CATEGORIES at parse time.
     const key = item.category.toLowerCase() as keyof UsesGrouped;
     grouped[key].push(item);
   }

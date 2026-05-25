@@ -1,4 +1,6 @@
-import { getUsageSummary, formatTokens, formatUsd } from '@/lib/cms/usage';
+import { getUsageSummary } from '@/lib/cms/usage';
+import { formatTokens, formatUsd } from '@/lib/cms/usage-format';
+import { shanghaiToday } from '@/lib/date/shanghai';
 import { TokenChart } from './token-chart';
 
 const FETCH_DAYS = 30;       // we fetch 30 days; chart scroll lets user see them all
@@ -28,7 +30,9 @@ function labelFor(p: string) { return PLATFORM_LABELS[p] ?? p; }
 export async function TokenPreview() {
   const summary = await getUsageSummary(FETCH_DAYS);
   const hasData = summary.totalTokens > 0 || summary.allTimeTokens > 0;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Match the materialized view's Shanghai TZ — UTC would mis-highlight during
+  // 16:00-23:59 UTC each day. See lib/date/shanghai.ts.
+  const todayStr = shanghaiToday();
 
   // KPI summary uses the LAST `VIEW_DAYS` slice of the daily series so it
   // aligns with what the user sees in the default rightmost scroll position.
@@ -59,7 +63,9 @@ export async function TokenPreview() {
 
       <div className="mb-8 grid grid-cols-2 gap-5 sm:grid-cols-3">
         <Kpi label={`${VIEW_DAYS}d Tokens`} value={hasData ? formatTokens(recentTokens) : '—'} />
-        <Kpi label={`${VIEW_DAYS}d Spend (USD eq.)`} value={hasData ? formatUsd(recentCost) : '—'} />
+        {/* Spend currently only covers ccusage rows; org-API pollers ship tokens with
+            cost=0 until provider cost reports are wired up. Label clarifies the bound. */}
+        <Kpi label={`${VIEW_DAYS}d Spend · est.`} value={hasData ? formatUsd(recentCost) : '—'} />
         <Kpi
           label="All-time Tokens"
           value={summary.allTimeTokens > 0 ? formatTokens(summary.allTimeTokens) : '—'}
