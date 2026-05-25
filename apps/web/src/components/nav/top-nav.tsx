@@ -2,8 +2,16 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { navItems } from '@/lib/nav-items';
 import { site } from '@/lib/site';
+import { getSiteVisibility } from '@/lib/cms/site-visibility';
+import type { SiteVisibility } from '@/lib/cms/site-visibility';
 
-export function TopNav() {
+export async function TopNav() {
+  const visibility: SiteVisibility = await getSiteVisibility();
+
+  const visibleItems = navItems.filter(
+    (item) => !item.module || visibility[item.module],
+  );
+
   return (
     <nav
       className="sticky top-0 z-10 hairline-b bg-[var(--color-bg)]/90 backdrop-blur"
@@ -18,7 +26,7 @@ export function TopNav() {
           {site.monogram}
         </Link>
         <ul className="flex gap-8">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <li key={item.href}>
               <Link
                 href={item.href}

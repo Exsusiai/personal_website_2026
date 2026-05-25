@@ -2,8 +2,16 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { footerLinks } from '@/lib/nav-items';
 import { site } from '@/lib/site';
+import { getSiteVisibility } from '@/lib/cms/site-visibility';
+import type { SiteVisibility } from '@/lib/cms/site-visibility';
 
-export function Footer() {
+export async function Footer() {
+  const visibility: SiteVisibility = await getSiteVisibility();
+
+  const visibleLinks = footerLinks.filter(
+    (link) => !link.module || visibility[link.module],
+  );
+
   const year = new Date().getFullYear();
   return (
     <footer className="hairline-t mt-24 py-12">
@@ -12,7 +20,7 @@ export function Footer() {
           © {year} {site.nameZh} · Built with Next.js
         </div>
         <ul className="flex gap-6">
-          {footerLinks.map((link) => (
+          {visibleLinks.map((link) => (
             <li key={link.href}>
               <Link href={link.href}>{link.label}</Link>
             </li>

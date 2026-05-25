@@ -42,6 +42,7 @@ export async function getTimeline(): Promise<TimelineNode[]> {
     const resp = await withRetry(() =>
       client.dataSources.query({
         data_source_id: getEnv().NOTION_DS_TIMELINE,
+        filter: { property: 'Published', checkbox: { equals: true } } as never,
         start_cursor: cursor,
         page_size: 100,
       }),
