@@ -60,8 +60,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Best-effort refresh of usage_daily materialized view so the homepage
+  // TokenPreview reflects new data within seconds (instead of waiting for a
+  // separate cron). Failure here doesn't fail the ingest — events are
+  // already committed.
+  const inserted = data?.length ?? 0;
+  let refreshed: 'ok' | 'failed' | 'skipped' = 'skipped';
+  if (inserted > 0) {
+    const { error: refreshErr } = await supabase.rpc('refresh_usage_daily');
+    refreshed = refreshErr ? 'failed' : 'ok';
+    if (refreshErr) console.warn(`[ingest] view refresh failed: ${refreshErr.message}`);
+  }
+
   return NextResponse.json({
-    inserted: data?.length ?? 0,
-    skipped_duplicates: parsed.data.events.length - (data?.length ?? 0),
+    inserted,
+    skipped_duplicates: parsed.data.events.length - inserted,
+    view_refresh: refreshed,
   });
 }
