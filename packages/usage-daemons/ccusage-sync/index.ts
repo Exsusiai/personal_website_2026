@@ -75,7 +75,9 @@ const PLATFORM_BY_AGENT: Record<string, string> = {
 };
 
 function platformFromModel(model: string): string {
-  const m = model.toLowerCase();
+  // OpenClaw + similar router agents prefix model names like "[openclaw] gpt-5.4".
+  // Strip the bracket prefix before pattern-matching so platform inference works.
+  const m = model.replace(/^\[[^\]]+\]\s*/, '').toLowerCase();
   if (m.startsWith('claude-')) return 'anthropic';
   if (m.startsWith('gpt-') || m.startsWith('codex-') || m.startsWith('o1') || m.startsWith('o3')) return 'openai';
   if (m.startsWith('gemini-')) return 'google';
@@ -83,7 +85,7 @@ function platformFromModel(model: string): string {
   if (m.startsWith('glm-') || m.startsWith('chatglm')) return 'zhipu';
   if (m.startsWith('qwen')) return 'local';
   if (m.startsWith('minimax-') || m.startsWith('abab')) return 'minimax';
-  if (m.startsWith('kimi') || m.includes('moonshot')) return 'moonshot';
+  if (m.startsWith('kimi') || m.startsWith('k2') || m.includes('moonshot')) return 'moonshot';
   return 'other';
 }
 
@@ -106,10 +108,17 @@ function tsForSession(s: CcusageSession): string | null {
     const parsed = new Date(la);
     if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
   }
-  // fallback: Codex period has date in path like "2025/09/29/rollout-..."
-  const match = s.period?.match(/^(\d{4})\/(\d{2})\/(\d{2})/);
-  if (match) {
-    return new Date(`${match[1]}-${match[2]}-${match[3]}T12:00:00Z`).toISOString();
+  // Period fallback formats observed in ccusage v20+ data:
+  //   Codex   : "2025/09/29/rollout-..."
+  //   Hermes  : "20260425_164620_f1672c" (YYYYMMDD_HHMMSS_<rand>)
+  const codexMatch = s.period?.match(/^(\d{4})\/(\d{2})\/(\d{2})/);
+  if (codexMatch) {
+    return new Date(`${codexMatch[1]}-${codexMatch[2]}-${codexMatch[3]}T12:00:00Z`).toISOString();
+  }
+  const hermesMatch = s.period?.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
+  if (hermesMatch) {
+    const [, y, mo, d, h, mi, se] = hermesMatch;
+    return new Date(`${y}-${mo}-${d}T${h}:${mi}:${se}Z`).toISOString();
   }
   return null;
 }
