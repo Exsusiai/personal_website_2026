@@ -1,13 +1,27 @@
 /**
- * CAVEAT: The ccusage CLI JSON output shape below is based on documentation and
- * community examples as of 2026-05. Before scheduling this daemon, run:
+ * ccusage-sync — ship every device's local LLM CLI usage to /api/usage/ingest.
  *
- *   ccusage --json --breakdown session
+ * ccusage v20+ schema (verified against real output 2026-05):
+ *   {
+ *     session: [
+ *       {
+ *         agent: "claude" | "codex" | "opencode" | ...,
+ *         modelsUsed: ["model-a", ...],
+ *         modelBreakdowns: [{ modelName, inputTokens, outputTokens, cacheReadTokens,
+ *                             cacheCreationTokens, cost }, ...],
+ *         metadata: { lastActivity?: "YYYY-MM-DD" | "ISO 8601" },
+ *         period: "<uuid>" | "YYYY/MM/DD/rollout-..." | "ses_xxx",
+ *         totalCost, totalTokens, inputTokens, outputTokens, ...
+ *       }
+ *     ],
+ *     totals: {...}
+ *   }
  *
- * and verify that the shape matches what this file expects (CcusageOutput.sessions[]).
- * If the real output differs, update the CcusageSession interface and toEvents() adapter
- * accordingly. Common divergences: field renamed (e.g. `input` → `inputTokens`),
- * nested model breakdown instead of flat modelsUsed array, missing sessionId, etc.
+ * We emit one UsageEvent per (session, model) pair, since a single session may
+ * span multiple models (e.g. codex switching gpt-5.4 <-> gpt-5.5 mid-session).
+ *
+ * Platform is derived from agent first, falling back to model-name prefix for
+ * the multi-provider agents (opencode supports many providers).
  */
 
 import { spawn } from 'node:child_process';
@@ -16,35 +30,99 @@ import { postEvents } from '../shared/usage-client.js';
 import type { UsageEvent } from '../shared/types.js';
 import { readState, writeState } from './state.js';
 
-/**
- * ccusage --json shape (subset we care about):
- *   { totals: {...}, daily: [{ date: "YYYY-MM-DD", models: [{ model, input, output, cost, ... }], ... }], sessions: [...] }
- *
- * We map ccusage's per-session breakdown to UsageEvent rows. See ccusage docs:
- * https://ccusage.com/
- */
+// ---------------------------------------------------------------------------
+// ccusage schema
+// ---------------------------------------------------------------------------
+
+interface ModelBreakdown {
+  modelName: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+  cost: number;
+}
 
 interface CcusageSession {
-  sessionId: string;
+  agent: string;
   modelsUsed: string[];
-  date: string;        // YYYY-MM-DD
-  input: number;
-  output: number;
-  cacheRead?: number;
-  cacheWrite?: number;
-  cost: number;
-  projectPath?: string;
+  modelBreakdowns: ModelBreakdown[];
+  metadata?: { lastActivity?: string };
+  period: string;
+  totalCost: number;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
 }
 
 interface CcusageOutput {
-  sessions?: CcusageSession[];
+  session: CcusageSession[];
+  totals: unknown;
 }
 
-function runCcusage(sinceIso: string | null): Promise<CcusageOutput> {
+// ---------------------------------------------------------------------------
+// Platform inference
+// ---------------------------------------------------------------------------
+
+const PLATFORM_BY_AGENT: Record<string, string> = {
+  claude: 'anthropic',
+  codex: 'openai',
+  gemini: 'google',
+  copilot: 'github',
+  // opencode / hermes / openclaw / others → resolved by model name (multi-provider)
+};
+
+function platformFromModel(model: string): string {
+  const m = model.toLowerCase();
+  if (m.startsWith('claude-')) return 'anthropic';
+  if (m.startsWith('gpt-') || m.startsWith('codex-') || m.startsWith('o1') || m.startsWith('o3')) return 'openai';
+  if (m.startsWith('gemini-')) return 'google';
+  if (m.startsWith('deepseek-')) return 'deepseek';
+  if (m.startsWith('glm-') || m.startsWith('chatglm')) return 'zhipu';
+  if (m.startsWith('qwen')) return 'local';
+  if (m.startsWith('minimax-') || m.startsWith('abab')) return 'minimax';
+  if (m.startsWith('kimi') || m.includes('moonshot')) return 'moonshot';
+  return 'other';
+}
+
+function platformFor(agent: string, model: string): string {
+  return PLATFORM_BY_AGENT[agent] ?? platformFromModel(model);
+}
+
+// ---------------------------------------------------------------------------
+// Timestamp normalization
+// ---------------------------------------------------------------------------
+
+function tsForSession(s: CcusageSession): string | null {
+  const la = s.metadata?.lastActivity;
+  if (la) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(la)) {
+      // date-only — use noon UTC as midpoint
+      return new Date(la + 'T12:00:00Z').toISOString();
+    }
+    // assume ISO 8601 with time
+    const parsed = new Date(la);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  // fallback: Codex period has date in path like "2025/09/29/rollout-..."
+  const match = s.period?.match(/^(\d{4})\/(\d{2})\/(\d{2})/);
+  if (match) {
+    return new Date(`${match[1]}-${match[2]}-${match[3]}T12:00:00Z`).toISOString();
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// ccusage CLI runner
+// ---------------------------------------------------------------------------
+
+function runCcusage(sinceIsoDate: string | null): Promise<CcusageOutput> {
   return new Promise((resolve, reject) => {
     const { CCUSAGE_PATH } = getEnv();
     const args = ['--json', '--breakdown', 'session'];
-    if (sinceIso) args.push('--since', sinceIso.slice(0, 10));
+    if (sinceIsoDate) args.push('--since', sinceIsoDate.slice(0, 10));
     const proc = spawn(CCUSAGE_PATH, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     let stdout = '';
@@ -63,26 +141,46 @@ function runCcusage(sinceIso: string | null): Promise<CcusageOutput> {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Map ccusage sessions → UsageEvent rows (one per session × model)
+// ---------------------------------------------------------------------------
+
 function toEvents(out: CcusageOutput, device: string): UsageEvent[] {
-  const sessions = out.sessions ?? [];
-  return sessions.flatMap((s) => {
-    // ccusage groups by session, may aggregate multiple models. Emit one event per (session, model).
-    return s.modelsUsed.map<UsageEvent>((model) => ({
-      ts: new Date(s.date + 'T12:00:00Z').toISOString(),  // date-level granularity; midpoint
-      device,
-      platform: 'anthropic',                              // ccusage = Claude Code = Anthropic
-      model,
-      input_tokens: s.input,
-      output_tokens: s.output,
-      cache_read_tokens: s.cacheRead ?? 0,
-      cache_write_tokens: s.cacheWrite ?? 0,
-      cost_usd: s.cost,
-      session_id: s.sessionId,
-      project_path: s.projectPath ?? null,
-      source: 'ccusage',
-    }));
-  });
+  const events: UsageEvent[] = [];
+  const sessions = out.session ?? [];
+  let skipped = 0;
+
+  for (const s of sessions) {
+    const ts = tsForSession(s);
+    if (!ts) { skipped++; continue; }
+    const breakdowns = s.modelBreakdowns ?? [];
+    for (const m of breakdowns) {
+      events.push({
+        ts,
+        device,
+        platform: platformFor(s.agent, m.modelName),
+        model: m.modelName,
+        input_tokens: m.inputTokens,
+        output_tokens: m.outputTokens,
+        cache_read_tokens: m.cacheReadTokens ?? 0,
+        cache_write_tokens: m.cacheCreationTokens ?? 0,
+        cost_usd: m.cost,
+        session_id: `${s.agent}:${s.period}`,
+        project_path: null,
+        source: 'ccusage',
+      });
+    }
+  }
+
+  if (skipped > 0) {
+    console.warn(`[ccusage-sync] skipped ${skipped} sessions without a usable timestamp`);
+  }
+  return events;
 }
+
+// ---------------------------------------------------------------------------
+// main
+// ---------------------------------------------------------------------------
 
 async function main() {
   const env = getEnv();
@@ -94,7 +192,7 @@ async function main() {
 
   const ccOut = await runCcusage(since);
   const events = toEvents(ccOut, env.DEVICE_NAME);
-  console.log(`[ccusage-sync] mapped ${events.length} events from ${ccOut.sessions?.length ?? 0} sessions`);
+  console.log(`[ccusage-sync] mapped ${events.length} events from ${ccOut.session?.length ?? 0} sessions`);
 
   if (events.length > 0) {
     const result = await postEvents(events);

@@ -45,3 +45,6 @@ coverage/
 # Misc
 *.pem
 .cache/
+
+#documents
+docs/

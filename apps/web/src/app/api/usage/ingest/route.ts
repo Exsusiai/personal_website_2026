@@ -4,11 +4,17 @@ import { getSupabaseAdmin } from '@/lib/db/supabase';
 
 export const runtime = 'nodejs';
 
+/**
+ * platform / source kept as free-form strings (not enums) since users may
+ * integrate custom agents (OpenClaw, Hermes, internal apps) with their own
+ * provider names (deepseek / zhipu / minimax / local etc.) and source labels.
+ * Sanity-check at the string level only.
+ */
 const eventSchema = z.object({
   ts: z.string(),
-  device: z.string().min(1),
-  platform: z.enum(['anthropic', 'openai', 'google']),
-  model: z.string().min(1),
+  device: z.string().min(1).max(64),
+  platform: z.string().min(1).max(32),
+  model: z.string().min(1).max(128),
   input_tokens: z.number().int().nonnegative(),
   output_tokens: z.number().int().nonnegative(),
   cache_read_tokens: z.number().int().nonnegative().optional(),
@@ -16,7 +22,7 @@ const eventSchema = z.object({
   cost_usd: z.number().nonnegative(),
   session_id: z.string().nullable().optional(),
   project_path: z.string().nullable().optional(),
-  source: z.enum(['ccusage', 'anthropic-usage-api', 'openai-usage-api']),
+  source: z.string().min(1).max(64),
 });
 
 const bodySchema = z.object({
