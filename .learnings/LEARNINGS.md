@@ -173,6 +173,56 @@ Server Component 引用 wrapper。运行时行为不变（heavy 代码仍 client
 
 ---
 
+## LRN-015 · Supabase SQL Editor 默认 read-only 模式静默拒绝 DDL
+
+**问题**：用户在 Supabase Dashboard SQL Editor 粘贴 `CREATE TABLE` 后点 Run，UI 显示像跑成功了（没有红色错误弹窗），但实际报 `25006: cannot execute CREATE TABLE in a read-only transaction`，并且任何后续 view / 关联表全部失败。Checklist 被错误地勾选为"已完成"。
+
+**根因**：Supabase Dashboard SQL Editor 有"Read-only"模式开关，**默认开启**。所有 DDL（CREATE / ALTER / DROP）+ DML（INSERT/UPDATE/DELETE）都被拒。错误消息容易被忽略——很多用户以为运行成功了。
+
+**做法**：
+1. 跑 migration 前先关 SQL Editor 顶部的 "Read-only" 开关
+2. 跑完后用 `SELECT table_name FROM information_schema.tables WHERE table_schema='public'` 验证表确实建好了
+3. PHASE4_CHECKLIST 已更新加这条 hint
+
+---
+
+## LRN-016 · Supabase 复制的 Project URL 可能含 `/rest/v1/` 路径
+
+**问题**：用户从 Supabase Dashboard 复制 Project URL 时，可能复制成 `https://xxx.supabase.co/rest/v1/`（含 REST API 路径），结果后端 supabase-js 拼接成 `https://xxx.supabase.co/rest/v1//rest/v1/usage_events`，PostgREST 返回 `PGRST125: Invalid path specified in request URL`。
+
+**根因**：Dashboard UI 把 "Project URL" 显示在 "Data API" tab 下，旁边还有可点的链接片段——容易复制错。
+
+**做法**：env loader 应该 strip 末尾的 `/rest/v1/` 和 trailing slash。或文档里强调 SUPABASE_URL 只填裸 origin。
+
+---
+
+## LRN-017 · Notion / ccusage / OpenClaw / Hermes 之间的 token 用量追踪关系
+
+**事实**（2026-05-25 经实测确认）：
+
+- **ccusage v20+** 原生支持识别多个 AI agent CLI：
+  - `agent: 'claude'` — Claude Code（`~/.claude/projects/*.jsonl`）
+  - `agent: 'codex'` — Codex CLI（`~/.codex/*`）
+  - `agent: 'opencode'` — sst/opencode（`~/.opencode/*`，注意是 sst/opencode 不是 OpenClaw）
+  - `agent: 'openclaw'` — OpenClaw（openclaw/openclaw，~/.openclaw/lcm.db）
+  - `agent: 'hermes'` — Hermes Agent（NousResearch/hermes-agent，`~/.hermes/*`）
+
+- **订阅模式**（Claude Max / ChatGPT Pro / Codex sub）的实际消耗**不通过** Anthropic / OpenAI 的 Admin Usage API 暴露——它们只统计 per-token billing。所有订阅用量必须通过本地 CLI 日志（ccusage）才能拿到。
+
+- ccusage 给出的 `cost_usd` 对订阅用户是"假如按 API 计费的等价值"——这是订阅 ROI 指标，对个人 IP 网站是更有意义的展示数字。
+
+**含义**：Phase 4 daemon 架构大幅简化——单一 ccusage-sync 已经能搜集所有 4 个 agent 的数据，**完全不需要写 OpenClaw / Hermes plugin**。
+
+---
+
+## LRN-018 · tsx 不自动 dotenv；用 Node 22+ 原生 `--env-file-if-exists`
+
+**问题**：`tsx daemon.ts` 不自动加载同目录 `.env`，daemon 启动时 `process.env.INGEST_URL` 是 undefined。
+
+**做法**：package.json script 改成 `tsx --env-file-if-exists=.env daemon.ts`。Node 22+ 原生支持 `--env-file` 和 `--env-file-if-exists`，tsx 透传 Node 旗。`-if-exists` 变体避免 CI 等无 .env 环境报错。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown
