@@ -223,6 +223,57 @@ Server Component 引用 wrapper。运行时行为不变（heavy 代码仍 client
 
 ---
 
+## LRN-019 · ccusage `total_tokens` 必须包含 cache tokens
+
+**问题**：物化视图 `usage_daily.total_tokens = SUM(input + output)` 看起来天经地义但**严重低估** Claude Code 类 agent 的真实用量。
+
+实测对比同一个 session：
+- ccusage 报告：302M tokens / $220.98
+- DB 物化视图：697K tokens / $220.98 ← **433× 低估**
+
+**根因**：Claude Code 默认开启 prompt cache，每次请求 cache_read_tokens 可以是 input_tokens 的 100-1000 倍。Anthropic 计费 cache_read 按 input 的 10% 算 → cost 算对了；但 token 总量必须把 cache_read + cache_write 加进去才反映真实用量。
+
+**做法**：
+```sql
+SUM(input_tokens + output_tokens + cache_read_tokens + cache_write_tokens) AS total_tokens
+```
+同时单独暴露 `cache_read_tokens` / `cache_write_tokens` 列，未来可以做 cache-hit 比例分析。
+
+**含义**：任何接 ccusage / Claude API / Anthropic SDK 的项目，统计 tokens 时**必须算 cache token**，不然会 100-500× 低估。
+
+---
+
+## LRN-020 · Next.js Server Component → Client Component 的滚动+归一化模式
+
+**问题**：bar chart 滚动时按"当前可见窗口"重新归一化 Y 轴。Server-rendered HTML 是静态的，无法响应 scroll 事件。
+
+**做法**：拆成两层：
+- 父组件 `TokenPreview` (server) — fetch data + KPI + legend
+- 子组件 `TokenChart` (client, `'use client'`) — 接 `daily: DailyPoint[]` 数据 prop，自己持有 `scrollLeft → visStart` 状态，render bars with normalized heights
+
+scroll 监听用 rAF 节流：
+```ts
+useEffect(() => {
+  const el = scrollRef.current;
+  if (!el) return;
+  let ticking = false;
+  const update = () => {
+    const start = Math.floor(el.scrollLeft / (BAR_WIDTH + BAR_GAP));
+    setVisStart(start);
+    ticking = false;
+  };
+  const onScroll = () => {
+    if (!ticking) { requestAnimationFrame(update); ticking = true; }
+  };
+  el.addEventListener('scroll', onScroll, { passive: true });
+  return () => el.removeEventListener('scroll', onScroll);
+}, []);
+```
+
+每次 scroll 重渲染 bars，CSS `transition` 让高度动画过渡。Slot 宽度（BAR + GAP）需要固定，便于计算 visStart。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown
