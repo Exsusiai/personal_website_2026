@@ -12,7 +12,7 @@ export interface PlatformBucket {
 }
 
 export interface DailyPoint {
-  day: string;                           // YYYY-MM-DD (Shanghai-local)
+  day: string;                           // YYYY-MM-DD in LOCAL_TZ (see lib/date/local-tz.ts)
   totalTokens: number;
   costUsd: number;
   byPlatform: Record<string, number>;    // platform → tokens for stack chart

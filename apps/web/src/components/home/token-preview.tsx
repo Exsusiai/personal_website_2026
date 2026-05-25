@@ -1,6 +1,6 @@
 import { getUsageSummary } from '@/lib/cms/usage';
 import { formatTokens, formatUsd } from '@/lib/cms/usage-format';
-import { shanghaiToday } from '@/lib/date/shanghai';
+import { localToday } from '@/lib/date/local-tz';
 import { TokenChart } from './token-chart';
 
 const FETCH_DAYS = 30;       // we fetch 30 days; chart scroll lets user see them all
@@ -30,9 +30,9 @@ function labelFor(p: string) { return PLATFORM_LABELS[p] ?? p; }
 export async function TokenPreview() {
   const summary = await getUsageSummary(FETCH_DAYS);
   const hasData = summary.totalTokens > 0 || summary.allTimeTokens > 0;
-  // Match the materialized view's Shanghai TZ — UTC would mis-highlight during
-  // 16:00-23:59 UTC each day. See lib/date/shanghai.ts.
-  const todayStr = shanghaiToday();
+  // Match the materialized view's local TZ (Europe/Berlin) — UTC would
+  // mis-highlight near midnight Berlin. See lib/date/local-tz.ts.
+  const todayStr = localToday();
 
   // KPI summary uses the LAST `VIEW_DAYS` slice of the daily series so it
   // aligns with what the user sees in the default rightmost scroll position.

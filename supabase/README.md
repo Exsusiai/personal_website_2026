@@ -8,6 +8,7 @@ Run migrations **in order** from the Supabase SQL editor (Project → SQL Editor
 4. `migrations/0004_usage_daily_include_cache.sql` — fold `cache_read_tokens` + `cache_write_tokens` into the view's total
 5. `migrations/0005_dedup_by_session_model.sql` — replace dedup constraint with `(session_id, model)` so cumulative ccusage snapshots UPSERT instead of duplicating
 6. `migrations/0006_dedup_org_pollers.sql` — clean up NULL-session org-poller duplicates, retrofit deterministic IDs, widen UNIQUE to `(source, session_id, model)`
+7. `migrations/0007_usage_daily_berlin_tz.sql` — re-bucket `usage_daily` on `Europe/Berlin` (was `Asia/Shanghai`) to match the site operator's local time
 
 Or via the Supabase CLI:
 

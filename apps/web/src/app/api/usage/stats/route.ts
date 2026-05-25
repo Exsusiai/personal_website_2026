@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
-import { shanghaiDateNDaysAgo } from '@/lib/date/shanghai';
+import { localDateNDaysAgo } from '@/lib/date/local-tz';
 
 export const runtime = 'nodejs';
 export const revalidate = 300;  // ISR for the API too
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
   const { data: dailyRows, error: dailyErr } = await supabase
     .from('usage_daily')
     .select('day, total_tokens, cost_usd')
-    .gte('day', shanghaiDateNDaysAgo(days - 1))
+    .gte('day', localDateNDaysAgo(days - 1))
     .order('day', { ascending: true });
 
   if (dailyErr) {
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
   const { data: platformRows, error: platformErr } = await supabase
     .from('usage_daily')
     .select('platform, total_tokens, cost_usd')
-    .gte('day', shanghaiDateNDaysAgo(days - 1));
+    .gte('day', localDateNDaysAgo(days - 1));
 
   if (platformErr) {
     return NextResponse.json({ error: platformErr.message }, { status: 500 });

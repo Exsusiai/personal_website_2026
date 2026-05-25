@@ -1,6 +1,6 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/db/supabase';
-import { shanghaiDateNDaysAgo } from '@/lib/date/shanghai';
+import { localDateNDaysAgo } from '@/lib/date/local-tz';
 import type { DailyPoint, PlatformBucket, UsageSummary } from './usage-format';
 
 export type { DailyPoint, PlatformBucket, UsageSummary } from './usage-format';
@@ -31,8 +31,8 @@ export async function getUsageSummary(days = 30): Promise<UsageSummary> {
     if (error) throw error;
 
     // Window covers `days` calendar days INCLUDING today → use days-1 offset.
-    // All date math in Asia/Shanghai to match the view's day truncation.
-    const windowStartStr = shanghaiDateNDaysAgo(days - 1);
+    // All date math in LOCAL_TZ (Europe/Berlin) to match the view's day truncation.
+    const windowStartStr = localDateNDaysAgo(days - 1);
 
     // Per-day with platform breakdown (rolling window)
     const dailyMap = new Map<string, DailyPoint>();
@@ -98,10 +98,10 @@ export async function getUsageSummary(days = 30): Promise<UsageSummary> {
  */
 function fillDays(dailyMap: Map<string, DailyPoint>, days: number): DailyPoint[] {
   const out: DailyPoint[] = [];
-  // Iterate from oldest to newest within the window, using Shanghai-local
+  // Iterate from oldest to newest within the window, using Berlin-local
   // date strings to match the view's day truncation.
   for (let offset = days - 1; offset >= 0; offset--) {
-    const dayStr = shanghaiDateNDaysAgo(offset);
+    const dayStr = localDateNDaysAgo(offset);
     out.push(
       dailyMap.get(dayStr) ?? { day: dayStr, totalTokens: 0, costUsd: 0, byPlatform: {} },
     );
