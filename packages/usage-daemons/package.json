@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ccusage": "tsx ccusage-sync/index.ts",
-    "anthropic": "tsx anthropic-poller/index.ts",
-    "openai": "tsx openai-poller/index.ts"
+    "ccusage": "tsx --env-file-if-exists=.env ccusage-sync/index.ts",
+    "anthropic": "tsx --env-file-if-exists=.env anthropic-poller/index.ts",
+    "openai": "tsx --env-file-if-exists=.env openai-poller/index.ts"
   },
   "dependencies": {
     "zod": "^4.4.3"
