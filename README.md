@@ -140,11 +140,11 @@ Mockup (preserved in brainstorm artifacts, gitignored).
 
 - ✅ **Phase 1** — Skeleton + design system + 11 routes (`v0.1.0-phase1`)
 - ✅ **Phase 2** — Notion CMS data layer + block renderer + all content pages (`v0.2.0-phase2`)
-- 🔧 **Phase 3** — 3D viewer (code ready, awaiting R2 bucket + GLB upload)
-- 🔧 **Phase 4** — Token dashboard (Supabase + ingest API + daemons ready; awaiting server-side OpenClaw/Hermes plugins)
-- 🔧 **Phase 5** — R2 image proxy + Vercel deployment + custom domain
+- 🟡 **Phase 3** — 3D viewer: code ready (R3F v9 + dynamic load); awaiting R2 + real GLB upload
+- ✅ **Phase 4** — Token dashboard: live data from 2 devices via hourly ccusage-sync (launchd + systemd timer), 4 platforms, ISR-backed homepage card
+- 🟡 **Phase 5** — Partial: PDF + sitemap + robots + OG done; remaining: R2 image proxy / Vercel deployment / custom domain / Lighthouse polish
 
-Each phase has a dedicated implementation plan under `docs/superpowers/plans/`.
+Each phase has a dedicated implementation plan under `docs/superpowers/plans/`. Deployment templates (launchd / systemd / Task Scheduler) live under `docs/deployment/`.
 
 ## Forking This
 

@@ -486,39 +486,44 @@ personal_website_new/
 - 10 个路由占位（about / resume / projects / projects/[slug] / thinking / thinking/[slug] / now / uses / contact + 404）
 - **里程碑达成**：localhost 上首页符合 mockup，13 tests pass，build 干净
 
-### Phase 2：Notion 数据层（Week 2）
+### Phase 2：Notion 数据层（Week 2）· ✅ 已交付 v0.2.0-phase2
 
-- Notion 工作区建好 5 databases（projects / thinking / resume / uses / timeline）+ 3 pages（about / now / contact）
-- `lib/cms/*` 全套封装
-- 自写 Notion Block Renderer（MVP block 类型）
-- 跑通所有内容页（projects、thinking、about（含 Timeline section）、now、contact、uses、resume）
+- Notion 工作区建好 5 databases + 3 pages
+- `lib/cms/*` 全套封装（projects / thinking / resume / uses / timeline / pages）
+- 自写 Notion Block Renderer（rich text + 11 block types + shiki code highlight）
+- 所有 10 个内容路由全部接入 Notion + ISR 5min
 - 图片代理 MVP（next/image + remotePatterns）
-- **里程碑**：所有内容页能从 Notion 拉数据渲染，timeline 作为 About 页内的 section
+- **里程碑达成**：70 tests 全绿，所有内容页真数据渲染
 
-### Phase 3：3D 模型查看器（Week 3 前半）
+实际偏离：Notion SDK v5 升级带来的 `data_source_id` 模型变更（LRN-010），env var 改名 `NOTION_DS_*`；API 版本 `2025-09-03`。
 
-- 集成 R3F + drei
-- 写 `<Model3DViewer>`（极简：OrbitControls + auto-fit + 基础光照）
-- 走通完整 pipeline（SolidWorks → STEP → CAD Assistant → GLB → R2 → 网页）
-- 真实模型测试至少 2 个装配体
-- **里程碑**：项目详情页能流畅展示 GLB
+### Phase 3：3D 模型查看器 · 🟡 代码就绪，等真实 GLB 上传（用户侧）
 
-### Phase 4：Token Daemon（Week 3 后半 + Week 4 前半）
+- ✅ 集成 R3F v9 + drei + three（dynamic import + ssr:false 隔离，主 bundle 无影响）
+- ✅ `<Model3DViewer>`：OrbitControls + drei `<Bounds>` auto-fit + 双向光照 + Suspense
+- ✅ `/projects/[slug]` 条件渲染（`project.modelGlbUrl` 存在才显示）
+- ❌ 真实 GLB 上传（待用户）：SolidWorks 导 STEP → CAD Assistant 转 GLB → Cloudflare R2 上传 → 填 Notion `ModelGLB_URL` 字段
+- **里程碑状态**：架构完成，真实模型验证待用户操作
 
-- Supabase 表 + 物化视图
-- 三个 daemon 全部实现（ccusage-sync + anthropic-poller + openai-poller）
-- 主力 Mac 部署 ccusage-sync（launchd）
-- always-on 设备部署两个 poller
-- 首页 TokenPreview 卡片接入真实聚合数据（替换占位假数据）
-- **里程碑**：首页 Token 卡片展示真实多平台多设备 30 天聚合数据（不开独立看板页）
+### Phase 4：Token Daemon · ✅ 主线交付（2026-05-25）
 
-### Phase 5：图片代理升级 + PDF + 打磨（Week 4 后半）
-- 图片代理升级到 R2 缓存版
-- 简历 PDF 导出
-- 移动端测试 & 优化
-- SEO（sitemap.xml、robots.txt、OG image）
-- Lighthouse > 95
-- **里程碑**：可发给朋友、可填到简历 URL
+- ✅ Supabase 3 个 migration（usage_events + usage_daily 物化视图 + notion_image_cache）+ RLS 启用
+- ✅ ccusage-sync daemon（多 agent 适配 claude/codex/opencode/openclaw/hermes，多 platform 推断含国产 LLM）
+- ✅ 笔记本 launchd + 服务器 systemd user timer，每小时自动跑
+- ✅ ingest API 自动 `REFRESH MATERIALIZED VIEW` 保持视图新鲜
+- ✅ 首页 TokenPreview 接真实数据
+- 📝 anthropic-poller + openai-poller 代码保留但**不部署**——订阅模式不通过 Admin API（LRN-017）
+- **里程碑达成**：621 events / 2 devices / 4 platforms / ~$2000 等价值 in DB，首页实时显示 30 天滑动窗口
+
+### Phase 5：图片代理升级 + PDF + 打磨 · 🟡 部分
+
+- ✅ SEO 全套：sitemap.xml（动态拉 Notion）+ robots.txt + opengraph-image
+- ✅ Resume PDF 导出（@react-pdf/renderer + Noto Serif SC 中文字体 CDN）
+- ❌ 图片代理升级到 R2 持久化（V1 仍用 next/image remotePatterns，待图片量 > 200 张再切）
+- ❌ 移动端测试 & 优化
+- ❌ Lighthouse > 95 验证
+- ❌ **Vercel 部署 + 自定义域名**（上线前置阻塞）
+- **里程碑状态**：localhost 可工作；公网可访问需要 Phase 5 收尾
 
 **总工期**：half-time 投入约 4 周，全时投入约 2 周。
 
@@ -558,10 +563,13 @@ personal_website_new/
 
 ## 12. Open Questions
 
-实施阶段需要进一步确认的点：
+实施阶段需要进一步确认的点（2026-05-25 更新）：
 
-1. 域名选择（.dev / .me / .so / 其他）
-2. 个人 Logo / Monogram 设计（在 Phase 1 之前需要敲定，或先用文字 logo "CJS"）
-3. Dark mode 是否在 V1 就做（推荐 V1 只做 light，V2 加 dark）
-4. RSS Feed 是否在 V1 就做
-5. 是否引入 Vercel Analytics（推荐 V1 不引，纯静态先跑通）
+1. **域名选择**（.dev / .me / .so / 其他）—— ⏳ 未定，Phase 5 上线前需确定
+2. **个人 Logo / Monogram** —— ✅ 文字 "CJS" 已用于 favicon + 顶部 nav，足够
+3. **Dark mode** —— ✅ V1 已实现（CSS `prefers-color-scheme` 自动切，无 toggle UI）
+4. **RSS Feed** —— ⏳ V1 未做。`/thinking` 列表已结构化，加 RSS 是 1-2h 工作
+5. **Vercel Analytics** —— ⏳ V1 未引。可在 Vercel 部署后一键开
+6. **Cloudflare R2 image proxy 切换时机** —— 当 Notion 图片量 > 200 张时切换
+7. **OG image 中 "chjingsheng.com (TBD)" 字符串** —— 域名定后改 `apps/web/src/app/opengraph-image.tsx`
+8. **Notion DB password 轮换** —— 现有密码已在 chat history 出现，建议 Phase 5 上线前重置一次
