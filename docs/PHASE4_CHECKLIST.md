@@ -65,6 +65,20 @@
 
 ---
 
+## ✅ Phase 4 主线已完成（2026-05-25）
+
+数据流端到端跑通：
+- `mac-laptop` + `cortana-box` 两台设备，**launchd / systemd timer 每小时自动跑**
+- 当前库内 ~620 events，~$2000 等价值
+- ingest API 每次 insert 后自动 `REFRESH MATERIALIZED VIEW`，首页 5min ISR 自动更新
+- 首页 TokenPreview 显示真实 30 天聚合数据
+
+自动调度模板见 `docs/deployment/scheduling.md`（macOS launchd / Linux systemd / Windows Task Scheduler 三套）。
+
+下面的 D / F 章节保留作为部署文档参考。已勾完。
+
+---
+
 ## D. 部署 ccusage-sync daemon（每台设备）
 
 ### D.1 推 repo 到 GitHub（如果还没推）
