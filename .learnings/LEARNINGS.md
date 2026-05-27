@@ -385,6 +385,22 @@ function shanghaiDateStr(d: Date): string {
 
 ---
 
+## LRN-029 · ccusage "api-mode" session 既无 lastActivity 也无可解析 period
+
+**问题**：Hermes 的网关/代理调用在 ccusage 输出里 `period = "api-<hex>"`、`metadata` 字段直接缺失。`ccusage-sync` 的 `tsForSession` 三个解析分支（lastActivity / codex `YYYY/MM/DD` / hermes `YYYYMMDD_HHMMSS_`）全部失败，整条 session 被静默 skip，token + cost 都丢。
+
+**根因**：ccusage 对 stateless API gateway 请求只记录 token 计数，不存时间。文件系统上也没有对应 `session_*.json` 可借 mtime —— 这类调用是无状态的，没有 session 文件。
+
+**做法**：在 `state.json` 里维护 `firstSeenTs: Record<sessionId, isoString>` 持久化映射。`toEvents` 拿不到 ts 时：
+1. 查 `firstSeenTs[sessionId]` —— 有就用（稳定，跨 daemon 运行不变）
+2. 否则用 `now()`，并写回 state，下次复用
+
+**含义**：合成时间戳的核心要求是"稳定"——绝不能每次 daemon 运行都重新算"now"，否则同一个真实历史 session 的 token 会在图上一天一天往前漂。把 first-seen 持久化是最小代价的稳定性保证。
+
+**位置**：`packages/usage-daemons/ccusage-sync/{state.ts, index.ts}`
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown

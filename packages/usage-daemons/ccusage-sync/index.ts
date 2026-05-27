@@ -28,7 +28,7 @@ import { spawn } from 'node:child_process';
 import { getEnv } from '../shared/env.js';
 import { postEvents } from '../shared/usage-client.js';
 import type { UsageEvent } from '../shared/types.js';
-import { readState, writeState } from './state.js';
+import { readState, writeState, type State } from './state.js';
 
 // ---------------------------------------------------------------------------
 // ccusage schema
@@ -97,7 +97,7 @@ function platformFor(agent: string, model: string): string {
 // Timestamp normalization
 // ---------------------------------------------------------------------------
 
-function tsForSession(s: CcusageSession): string | null {
+export function tsForSession(s: CcusageSession): string | null {
   const la = s.metadata?.lastActivity;
   if (la) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(la)) {
@@ -120,6 +120,10 @@ function tsForSession(s: CcusageSession): string | null {
     const [, y, mo, d, h, mi, se] = hermesMatch;
     return new Date(`${y}-${mo}-${d}T${h}:${mi}:${se}Z`).toISOString();
   }
+  // No usable timestamp signal. Caller decides whether to drop or synthesize
+  // a fallback (see persistedFallbackTs in toEvents). Hermes "api-mode"
+  // sessions (period = "api-<hex>") fall in this bucket — they are real
+  // gateway calls but ccusage records no time information for them.
   return null;
 }
 
@@ -154,14 +158,35 @@ function runCcusage(sinceIsoDate: string | null): Promise<CcusageOutput> {
 // Map ccusage sessions → UsageEvent rows (one per session × model)
 // ---------------------------------------------------------------------------
 
-function toEvents(out: CcusageOutput, device: string): UsageEvent[] {
+export function toEvents(
+  out: CcusageOutput,
+  device: string,
+  firstSeenTs: Record<string, string>,
+  nowIso: string = new Date().toISOString(),
+): UsageEvent[] {
   const events: UsageEvent[] = [];
   const sessions = out.session ?? [];
-  let skipped = 0;
+  let synthesizedNow = 0;
+  let synthesizedFromState = 0;
 
   for (const s of sessions) {
-    const ts = tsForSession(s);
-    if (!ts) { skipped++; continue; }
+    const sessionId = `${s.agent}:${s.period}`;
+    let ts = tsForSession(s);
+    if (!ts) {
+      // No usable timestamp from ccusage. Use the previously persisted
+      // first-seen ts so this session stays at a stable point in time across
+      // daemon runs — otherwise it would jump to "now" every hour, smearing
+      // its tokens across whatever day the daemon last ran.
+      const persisted = firstSeenTs[sessionId];
+      if (persisted) {
+        ts = persisted;
+        synthesizedFromState++;
+      } else {
+        ts = nowIso;
+        firstSeenTs[sessionId] = nowIso;
+        synthesizedNow++;
+      }
+    }
     const breakdowns = s.modelBreakdowns ?? [];
     for (const m of breakdowns) {
       events.push({
@@ -174,15 +199,21 @@ function toEvents(out: CcusageOutput, device: string): UsageEvent[] {
         cache_read_tokens: m.cacheReadTokens ?? 0,
         cache_write_tokens: m.cacheCreationTokens ?? 0,
         cost_usd: m.cost,
-        session_id: `${s.agent}:${s.period}`,
+        session_id: sessionId,
         project_path: null,
         source: 'ccusage',
       });
     }
   }
 
-  if (skipped > 0) {
-    console.warn(`[ccusage-sync] skipped ${skipped} sessions without a usable timestamp`);
+  if (synthesizedNow > 0) {
+    console.warn(
+      `[ccusage-sync] synthesized "now" timestamp for ${synthesizedNow} session(s) with no embedded date ` +
+      `(e.g. hermes api-mode); future runs will reuse the stored ts for stability.`,
+    );
+  }
+  if (synthesizedFromState > 0) {
+    console.log(`[ccusage-sync] reused persisted fallback ts for ${synthesizedFromState} session(s)`);
   }
   return events;
 }
@@ -200,7 +231,10 @@ async function main() {
   console.log(`[ccusage-sync] since=${since ?? 'beginning'}`);
 
   const ccOut = await runCcusage(since);
-  const events = toEvents(ccOut, env.DEVICE_NAME);
+  // toEvents mutates firstSeenTs in place when it allocates a "now" fallback
+  // for a previously-unseen session, so the next writeState persists it.
+  const firstSeenTs: Record<string, string> = { ...(state.firstSeenTs ?? {}) };
+  const events = toEvents(ccOut, env.DEVICE_NAME, firstSeenTs);
   console.log(`[ccusage-sync] mapped ${events.length} events from ${ccOut.session?.length ?? 0} sessions`);
 
   if (events.length > 0) {
@@ -208,7 +242,11 @@ async function main() {
     console.log(`[ccusage-sync] affected=${result.affected}`);
   }
 
-  await writeState({ lastSyncedAt: new Date().toISOString() });
+  const nextState: State = {
+    lastSyncedAt: new Date().toISOString(),
+    firstSeenTs,
+  };
+  await writeState(nextState);
   console.log(`[ccusage-sync] done`);
 }
 

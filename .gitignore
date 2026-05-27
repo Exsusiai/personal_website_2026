@@ -46,5 +46,10 @@ coverage/
 *.pem
 .cache/
 
-#documents
-docs/
+#documents — most docs/ is local scratch (plans, brainstorms),
+# but we explicitly track deployment + review docs so they survive across machines.
+# NOTE: use `docs/*` (not `docs/`) so re-includes below actually work — git
+# won't recurse into a directory that itself is excluded.
+docs/*
+!docs/deployment/
+!docs/code-review/
