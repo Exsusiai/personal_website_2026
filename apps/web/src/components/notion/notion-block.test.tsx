@@ -101,4 +101,83 @@ describe('NotionBlockRenderer', () => {
     expect(pre).toBeInTheDocument();
     expect(pre?.textContent).toContain('fancy_future_block');
   });
+
+  describe('column_list / column', () => {
+    it('renders a column_list as a flex container with two columns', async () => {
+      // Need NotionBlocks wired so ColumnList can descend into column children.
+      await import('./notion-blocks');
+      const block = makeBlock('column_list', {
+        children: [
+          {
+            id: 'col-a',
+            type: 'column',
+            column: { width_ratio: 0.6 },
+            children: [makeBlock('paragraph', { paragraph: { rich_text: richText('Left side') } })],
+          },
+          {
+            id: 'col-b',
+            type: 'column',
+            column: { width_ratio: 0.4 },
+            children: [makeBlock('paragraph', { paragraph: { rich_text: richText('Right side') } })],
+          },
+        ],
+      });
+      const { container } = render(<NotionBlockRenderer block={block} />);
+      expect(screen.getByText('Left side')).toBeInTheDocument();
+      expect(screen.getByText('Right side')).toBeInTheDocument();
+      // Two direct children div under the flex container
+      const flexChildren = container.querySelectorAll(':scope > div > div');
+      expect(flexChildren.length).toBe(2);
+      // Width ratio 0.6 / 0.4 → 60% / 40% (jsdom strips trailing zeros from CSS values)
+      expect((flexChildren[0] as HTMLElement).style.flexBasis).toMatch(/^60(\.0+)?%$/);
+      expect((flexChildren[1] as HTMLElement).style.flexBasis).toMatch(/^40(\.0+)?%$/);
+    });
+
+    it('falls back to equal split when width_ratio is missing', async () => {
+      await import('./notion-blocks');
+      const block = makeBlock('column_list', {
+        children: [
+          { id: 'a', type: 'column', children: [] },
+          { id: 'b', type: 'column', children: [] },
+          { id: 'c', type: 'column', children: [] },
+        ],
+      });
+      const { container } = render(<NotionBlockRenderer block={block} />);
+      const cols = container.querySelectorAll(':scope > div > div');
+      expect(cols.length).toBe(3);
+      // 1/3 of 100 = 33.33%
+      cols.forEach((c) => expect((c as HTMLElement).style.flexBasis).toMatch(/^33\.33%$/));
+    });
+
+    it('renders nothing for an empty column_list', () => {
+      const block = makeBlock('column_list', { children: [] });
+      const { container } = render(<NotionBlockRenderer block={block} />);
+      expect(container.children.length).toBe(0);
+    });
+  });
+
+  describe('child_page', () => {
+    it('renders subpage title and inline child blocks', async () => {
+      await import('./notion-blocks');
+      const block = makeBlock('child_page', {
+        child_page: { title: 'Resume programmer version' },
+        children: [
+          makeBlock('paragraph', { paragraph: { rich_text: richText('Inside subpage') } }),
+        ],
+      });
+      render(<NotionBlockRenderer block={block} />);
+      expect(screen.getByText('Resume programmer version')).toBeInTheDocument();
+      expect(screen.getByText('Inside subpage')).toBeInTheDocument();
+    });
+
+    it('shows an empty marker when subpage has no fetched children', () => {
+      const block = makeBlock('child_page', {
+        child_page: { title: 'Bare page' },
+        children: [],
+      });
+      render(<NotionBlockRenderer block={block} />);
+      expect(screen.getByText('Bare page')).toBeInTheDocument();
+      expect(screen.getByText('[empty subpage]')).toBeInTheDocument();
+    });
+  });
 });

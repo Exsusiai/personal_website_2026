@@ -401,6 +401,60 @@ function shanghaiDateStr(d: Date): string {
 
 ---
 
+## LRN-030 · ESLint `react-hooks/error-boundaries`: 不能在 try/catch 里构造 JSX
+
+**问题**：写 `async function ChildDatabase()` 时把 `try { ... return <table>{rows.map...} } catch { ... }` 全包在一起，ESLint 报 9 个 `react-hooks/error-boundaries` 错误。
+
+**根因**：JSX 是惰性渲染的——`return <Component />` 只是创建一个 React element 对象，真正 render 发生在 React 树调度时。彼时 try/catch 早就 popped out 了，渲染错误根本不会被那个 catch 抓住。规则强制把 fetch（同步可抓）和 render（惰性，需 error boundary 兜底）拆开。
+
+**做法**：把 try/catch 限制在数据 fetch 函数里，返回一个 discriminated union `{kind: 'ok'|'empty'|'error', ...}`；调用方 await 拿到结果后再无 try/catch 地渲染 JSX：
+
+```ts
+async function fetchData(): Promise<{kind: 'ok'|'error', ...}> {
+  try { return {kind: 'ok', data: ...} } catch { return {kind: 'error', message: ...} }
+}
+async function Component() {
+  const r = await fetchData();
+  if (r.kind === 'error') return <Fallback />;
+  return <DataTable data={r.data} />;
+}
+```
+
+**含义**：所有 async server component 里需要"fetch 可能失败、UI 要兜底"的场景，都走这个 fetch→union→render 的模式。
+
+---
+
+## LRN-031 · Notion API SDK v2025-09 `databases.retrieve` 返回 `data_sources[]`
+
+**问题**：早期 Notion SDK 直接用 `database_id` 查 rows。新版本必须先拿 `data_source_id`。文档变化但很多教程没更新，第一次接触时容易卡。
+
+**做法**：
+```ts
+const db = await client.databases.retrieve({ database_id });
+// db.data_sources 是个数组，每个 db 至少一个 data source
+const resp = await client.dataSources.query({
+  data_source_id: db.data_sources[0].id,
+  ...
+});
+```
+
+**含义**：所有 `child_database` block / inline DB 渲染都要走这个二段式查询。可以缓存 `data_source_id` 减少一次 RTT。
+
+---
+
+## LRN-032 · Notion column_list / column 的 width_ratio 路径会因 API 版本不同
+
+**问题**：实现 column 布局时不确定 ratio 字段叫什么。
+
+**做法**：
+- 官方 API (2025-09)：`block.column.width_ratio`
+- SPA 内部 dump：`block.column_ratio`（顶层）或 `block.column.column_ratio`
+- 缺失时用 `1 / N` 等分
+
+**含义**：渲染 column 时双 fallback：`col.width_ratio ?? col.column_ratio ?? 0`，然后总和归一化。零值就走等分分支，永远不能产生 0% width 的 flex item（会塌成不可见列）。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown

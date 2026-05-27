@@ -75,6 +75,68 @@ describe('RichText', () => {
     expect(container.textContent).toBe('');
   });
 
+  describe('mention fallback', () => {
+    it('uses plain_text when mention has it', () => {
+      render(
+        <RichText
+          spans={[
+            makeSpan({
+              type: 'mention',
+              plain_text: 'Some Page',
+              href: 'https://www.notion.so/some-page',
+            }),
+          ]}
+        />,
+      );
+      expect(screen.getByText('Some Page')).toBeInTheDocument();
+    });
+
+    it('falls back to date.start when mention plain_text is the bullet placeholder', () => {
+      render(
+        <RichText
+          spans={[
+            makeSpan({
+              type: 'mention',
+              plain_text: '‣',
+              mention: { type: 'date', date: { start: '2026-05-27' } },
+            }),
+          ]}
+        />,
+      );
+      expect(screen.getByText('2026-05-27')).toBeInTheDocument();
+    });
+
+    it('renders @name for user mentions with empty plain_text', () => {
+      render(
+        <RichText
+          spans={[
+            makeSpan({
+              type: 'mention',
+              plain_text: '',
+              mention: { type: 'user', user: { id: 'u1', name: 'Jason' } },
+            }),
+          ]}
+        />,
+      );
+      expect(screen.getByText('@Jason')).toBeInTheDocument();
+    });
+
+    it('renders [mention] for unrecoverable mentions', () => {
+      render(
+        <RichText
+          spans={[
+            makeSpan({
+              type: 'mention',
+              plain_text: '',
+              mention: { type: 'page', page: { id: 'p1' } },
+            }),
+          ]}
+        />,
+      );
+      expect(screen.getByText('[mention]')).toBeInTheDocument();
+    });
+  });
+
   it('applies code styling', () => {
     const { container } = render(
       <RichText

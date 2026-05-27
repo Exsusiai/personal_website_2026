@@ -10,11 +10,21 @@ export interface RichTextAnnotations {
   color: string;
 }
 
+export interface RichTextMention {
+  type: 'page' | 'database' | 'date' | 'user' | 'link_preview' | 'template_mention';
+  page?: { id: string };
+  database?: { id: string };
+  date?: { start: string; end?: string | null };
+  user?: { id: string; name?: string };
+  link_preview?: { url: string };
+}
+
 export interface RichTextItem {
   plain_text: string;
   href?: string | null;
   annotations: RichTextAnnotations;
   type: 'text' | 'mention' | 'equation';
+  mention?: RichTextMention;
 }
 
 interface RichTextProps {
@@ -32,8 +42,23 @@ function colorClass(color: string): string {
   }
 }
 
+function mentionFallbackText(item: RichTextItem): string {
+  // Notion API normally populates plain_text for every mention. Guard against
+  // edge cases (deleted pages, sync glitches) where it comes back empty or as
+  // the placeholder bullet character ('‣').
+  if (item.type !== 'mention') return item.plain_text;
+  if (item.plain_text && item.plain_text !== '‣') return item.plain_text;
+  const m = item.mention;
+  if (!m) return '[mention]';
+  if (m.type === 'date' && m.date?.start) return m.date.start;
+  if (m.type === 'user' && m.user?.name) return `@${m.user.name}`;
+  if (m.type === 'link_preview' && m.link_preview?.url) return m.link_preview.url;
+  return '[mention]';
+}
+
 function renderSpan(item: RichTextItem, index: number): React.ReactNode {
-  const { annotations, plain_text, href } = item;
+  const { annotations, href } = item;
+  const plain_text = mentionFallbackText(item);
 
   let node: React.ReactNode = plain_text;
 
