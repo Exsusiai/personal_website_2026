@@ -455,6 +455,33 @@ const resp = await client.dataSources.query({
 
 ---
 
+## LRN-033 · Notion DB row 的 body = 一个完整 Notion 页，可以塞任意 block
+
+**问题**：简历 DB schema 要不要给 "工作经历的 bullet 详情"加 Description rich_text 字段？Markdown 编辑体验差。
+
+**关键洞察**：Notion 里每一条 DB row 本身就是 page，有自己的 `content / children`，可以放任何 block —— bullet / callout / code / image / column。"properties" 是结构化元数据，"body" 是自由文档。
+
+**做法**：
+- properties 装"能查询 / 能筛选 / 能导出 JSON"的结构化字段（Type / Tags / Org / FocusArea / Level / RepoUrl …）
+- bullet 详情 / 长内容塞进每行的 body（用 `pages.create({ ..., children })` 一次性写入；后续编辑直接在 Notion row 里像写文档）
+- 渲染端对需要 body 的类型并行 `getBlockChildren(row.id)`，套 NotionBlocks 渲染
+
+**含义**：DB-driven CMS 不必把所有内容硬塞进 properties。"properties = 结构 / body = 内容"这个分工让结构化筛选和自由排版兼得。Resume / 任何"列表中每项又是一份小文档"的场景都适用。
+
+---
+
+## LRN-034 · Notion parser 必须默认对 undefined property 容忍
+
+**问题**：扩展 schema 加新列后，老 row 不带新 property → 解析器读 `(prop as ...).select` 时 prop 是 undefined，整页崩。
+
+**根因**：Notion API 返回的 `properties` map 只包含**显式被设过值**的列；老 row 在新列上没值则该 key 直接缺失，不是 null。
+
+**做法**：所有 `parseX(prop: NotionProperty | undefined)` 在第一行 `if (!prop) return defaultValue` 兜底。
+
+**含义**：Schema migration 永远是单向的 —— 加一列不会回填老 row。任何"新列被全行使用"的假设都是错的，parser 必须独立于 schema 历史。这条比想象中常被忽略，加新字段时一定要回头加 null guard。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown

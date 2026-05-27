@@ -29,7 +29,13 @@ export interface Article {
   readTime: number;             // minutes
 }
 
-export type ResumeType = 'Experience' | 'Education' | 'Skill' | 'Award';
+export type ResumeType = 'Experience' | 'Education' | 'Skill' | 'Award' | 'Project';
+
+export type SkillCategory = 'Programming' | 'Mechanical' | 'Engineering' | 'AI';
+export type ProjectType = 'Personal' | 'Independent' | 'Course' | 'Internship' | 'OpenSource';
+export type FocusArea = 'Software' | 'Mechanical' | 'AI' | 'Robotics' | 'Universal';
+
+import type { NotionBlock } from './blocks';
 
 export interface ResumeItem {
   id: string;
@@ -37,15 +43,29 @@ export interface ResumeItem {
   title: string;
   org: string;
   location: string | null;
-  startDate: string;            // ISO
+  startDate: string;            // ISO (may be '')
   endDate: string | null;       // null = ongoing
+  summary: string;              // short paragraph (may be '')
   tags: string[];
+  focusAreas: FocusArea[];
   order: number;
+  // Skill-specific
+  category: SkillCategory | null;
+  level: number | null;         // 1-10
+  // Project-specific
+  projectType: ProjectType | null;
+  repoUrl: string | null;
+  demoUrl: string | null;
+  // Award-specific
+  imageUrl: string | null;
+  // Body content (bulleted detail / rich text) — fetched separately, may be []
+  details: NotionBlock[];
 }
 
 export interface ResumeBundle {
   experience: ResumeItem[];
   education: ResumeItem[];
+  project: ResumeItem[];
   skill: ResumeItem[];
   award: ResumeItem[];
 }
