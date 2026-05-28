@@ -482,6 +482,52 @@ const resp = await client.dataSources.query({
 
 ---
 
+## LRN-035 · "Raw token traffic" 作为公开指标天然会被 cache_read 吃掉
+
+**问题**：首页显示 3.1B all-time tokens，看起来虚高。换个标签（"Tokens processed"）没救——cache_read 占 94%。
+
+**根因**：ccusage / OpenAI / Anthropic 都把 cache_read 单独计为一种 SKU，单价比 input 低一个数量级。把它和 input/output 一起加进单一头部数字，就会被 cache_read 主导。
+
+**做法**：把主指标拆成 `active_tokens` = input + output + cache_write + reasoning（明确排除 cache_read），把 cache_read 作为副线展示成"cache hit"。3.1B → 189M（active），cache 复用变成"+ 2.9B cached reads · 94% hit"的工程亮点。
+
+**含义**：公开页面展示 LLM usage 时，永远先定义"什么算 active work"，再决定要不要把 cache reads 一起算。两者拆开后还能反过来夸 cache 效率。
+
+---
+
+## LRN-036 · ccusage v20 modelBreakdowns 不含 extra_total_tokens
+
+**问题**：远端 Hermes session 的 `totalTokens` 比 `sum(modelBreakdowns)` 多 10,221，差额无处可去。
+
+**根因**：ccusage 的 session-level total 公式是 `input + output + cache_read + cache_write + extra_total_tokens`。`modelBreakdowns` JSON 不序列化 `extra_total_tokens`（reasoning / extended-thinking tokens）。同步器若只消费 breakdown 就会少算。
+
+**做法**：sync 端计算 `session.totalTokens − sum(breakdowns)`，差额按 `output_tokens` 比例分摊回各 model row 的 `reasoning_tokens` 列（reasoning 与 output 强相关）。最后一行收纳 floor 余数防止 token 漏算。
+
+**含义**：任何对 ccusage breakdown 求和的代码都需要这个差额回收，不只是 Hermes。Codex o1/o3 也会触发。
+
+---
+
+## LRN-037 · API-rate value 应优先信源 cost，pricing fallback 只是兜底
+
+**问题**：org pollers (OpenAI/Anthropic Usage API) 直接写 `cost_usd: 0`，导致首页 Spend 严重低估；但 ccusage 已经基于自带价目表算了准确的 cost。要不要全局用本地 pricing 表覆盖？
+
+**根因**：ccusage 的 cost 比本地 pricing 表更可靠（它持续跟进 provider 价格更新，且区分 cache_read / cache_write 不同 SKU）。本地 pricing 表是为了填补 cost=0 的洞。
+
+**做法**：read-time 决策 `apiValue = reportedCost > 0 ? reportedCost : estimateApiRateValue(tokens, model)`。两条路径互补：有源头 cost 用源头，没有就用本地估算。Pricing 表组织成 regex → {input, output, cacheWrite, cacheRead, reasoning} per-million，按 specific-first 顺序匹配（opus 在 sonnet 前，sonnet 在 claude- 通配前）。
+
+**含义**：任何"用本地估算覆盖源头 cost"的实现都是错的——源头数据通常更准。Fallback 才是 pricing 表的本职。
+
+---
+
+## LRN-038 · materialized view 加 model 粒度让 per-model 价格成为可能
+
+**问题**：原 usage_daily GROUP BY (day, platform, device) 把同 device/platform 的所有 model 揉一起。要按 model 算 API-rate value 时无法做到。
+
+**做法**：把 model 加进 GROUP BY，view 行数从 ~150 涨到 ~189。新 PK 是 (day, platform, device, model)。read 端可以对每行单独调 pricing module。
+
+**含义**：MV 加 GROUP BY key 不是免费的（行数增长），但只要数据量级 < 几千行就值得。任何"我以后想按 X 切片"的潜在需求，trade-off 是 view size vs query flexibility。
+
+---
+
 ## 添加新 learning 的格式
 
 ```markdown
