@@ -2,15 +2,172 @@
 
 Review date: 2026-05-25
 
+Latest token-usage follow-up: 2026-05-28
+
 Scope: `apps/web`, `packages/usage-daemons`, `supabase/migrations`, related docs.
 
 ## Executive Summary
 
 整体质量不错：Web 侧 lint、类型检查、单测都通过，usage-daemons 也能通过 TypeScript 检查，生产构建在允许访问 Google Fonts 后通过。主要风险集中在 token usage 数据链路、Notion CMS 输入边界、以及少量文档/运行时一致性问题。
 
-Token usage 专项复查后，最高风险仍是 usage 数据链路：组织级 poller 会重复计数，成本字段目前系统性低估，且当前 `session_id,model` 去重策略对非 ccusage 的事件式上报不安全。
+2026-05-28 Token Usage 专项复查结论：目前没有看到导致“大量 token”被项目侧重复计算的证据；本机和远端的大头都来自 `cache_read_tokens`，而当前产品口径明确把 cache read/write 计入 `total_tokens`。真正的计算缺口是反方向的：Hermes 的 reasoning/extra tokens 在 `ccusage.totalTokens` 里存在，但同步器只消费 `modelBreakdowns`，会少算这部分。
 
-## Findings
+本次复查覆盖本机 Codex/Claude Code/OpenCode 输出、远端 cortana-box Hermes/OpenClaw/Claude/Codex 输出、`ccusage` v20.0.4 源码、ingest/upsert、`usage_daily` 聚合公式、OpenAI/Anthropic org poller。
+
+## 2026-05-28 Token Usage Deep Review Addendum
+
+### Summary
+
+- 本机 `ccusage --json --breakdown session --since 2026-05-25`：54 个 session，`totalTokens` 与 `modelBreakdowns` 分项合计完全一致，mismatch = 0。
+- 本机大数来源：Claude 约 2.224B tokens，其中 cache read 约 2.177B；Codex 约 289.7M tokens，其中 cache read 约 262.5M。
+- 远端 cortana-box `ccusage` v20.0.4：OpenClaw 约 334.9M tokens，其中 cache read 约 242.8M；Hermes 约 11.84M tokens，其中 cache read 约 4.80M。
+- 远端 OpenClaw / Codex / Claude 的 `totalTokens` 与 breakdown 合计一致；Hermes 有 10,221 tokens 差额，来源是 `ccusage` 的 `extra_total_tokens`/reasoning tokens。
+- 远端运行项目版本为 `49cf460`，本地当前 review 版本为 `e9d9f2e`；本次涉及的同步逻辑在两边没有发现会造成重复放大的差异。
+- 追加核查：`ccusage` v20.0.4 默认不会自动扫描 Hermes named profiles（`~/.hermes/profiles/<name>/state.db`）。如果使用非 default profile 且没有手动设置 `HERMES_HOME` 包含这些 profile home，会漏统 Hermes 用量。
+
+### P1 - ccusage does not discover Hermes named profiles by default
+
+Files:
+- External: `ccusage` v20.0.4 `rust/crates/ccusage/src/adapter/hermes.rs:134`
+- External: `ccusage` v20.0.4 `rust/crates/ccusage/src/adapter/hermes.rs:135`
+- External: `ccusage` v20.0.4 `rust/crates/ccusage/src/adapter/hermes.rs:145`
+- External: `ccusage` v20.0.4 `rust/crates/ccusage/src/adapter/hermes.rs:150`
+- Runtime: `packages/usage-daemons/ccusage-sync/index.ts:134`
+- Runtime: `packages/usage-daemons/ccusage-sync/index.ts:139`
+
+This is a real `ccusage` v20.0.4 limitation/bug for Hermes profile users.
+
+Hermes Agent's own profile implementation documents named profiles as independent `HERMES_HOME` directories under `~/.hermes/profiles/<name>/`, while the built-in default profile remains `~/.hermes`. However, `ccusage`'s Hermes adapter only does this:
+
+- If `HERMES_HOME` is set, split it by comma and read `<each>/state.db`.
+- Otherwise, read only `~/.hermes/state.db`.
+
+It does not scan `~/.hermes/profiles/*/state.db`, does not read Hermes `active_profile`, and has no `--hermes-path` option comparable to OpenClaw/pi options.
+
+Local minimal repro:
+
+- Created `HOME=/private/tmp/ccusage-hermes-profile-repro`.
+- Added default DB: `.hermes/state.db`, one session, total = 150.
+- Added named profile DB: `.hermes/profiles/work/state.db`, one session, total = 1,500.
+- Ran `ccusage hermes session --json` without `HERMES_HOME`: result = 1 session, total = 150.
+- Ran with `HERMES_HOME=<root>/.hermes,<root>/.hermes/profiles/work`: result = 2 sessions, total = 1,650.
+
+So if the production host has active usage in non-default Hermes profiles and the sync daemon runs plain `ccusage --json --breakdown session`, those profile tokens are not ingested into this project's dashboard at all. This is an undercount bug, not an overcount bug.
+
+Remote cortana-box status at review time:
+
+- `find ~/.hermes -name state.db` returned only `/home/jason/.hermes/state.db`.
+- `~/.hermes/profiles` did not exist on that host, so this specific host is not currently affected.
+
+Recommended fix:
+
+- Short-term operational workaround: set daemon environment `HERMES_HOME=/home/jason/.hermes,/home/jason/.hermes/profiles/<profile1>,...` on any machine using named Hermes profiles.
+- Better project-side hardening: before spawning `ccusage`, detect `~/.hermes/profiles/*/state.db` and construct `HERMES_HOME` automatically if the user has not set it.
+- Upstream fix: `ccusage` Hermes adapter should discover `~/.hermes/profiles/*/state.db` by default and/or add an explicit `--hermes-path` option.
+
+### P1 - Hermes reasoning/extra tokens are dropped by project-side sync
+
+Files:
+- `packages/usage-daemons/ccusage-sync/index.ts:37`
+- `packages/usage-daemons/ccusage-sync/index.ts:46`
+- `packages/usage-daemons/ccusage-sync/index.ts:190`
+- `packages/usage-daemons/ccusage-sync/index.ts:197`
+- `packages/usage-daemons/ccusage-sync/index.ts:198`
+- `packages/usage-daemons/ccusage-sync/index.ts:199`
+- `packages/usage-daemons/ccusage-sync/index.ts:200`
+- `supabase/migrations/0007_usage_daily_berlin_tz.sql:18`
+
+`ccusage` 的总体 token 口径是 `input + output + cache_creation + cache_read + extra_total_tokens`。Hermes adapter 会把 `reasoning_tokens` 写入 `extra_total_tokens`，但 `ModelBreakdown` 在 JSON 中不会序列化这个字段。当前同步器只从 `modelBreakdowns` 读取 `inputTokens/outputTokens/cacheReadTokens/cacheCreationTokens`，完全没有读取 session-level `totalTokens` 与 breakdown sum 的差值。
+
+远端实测：
+- Hermes total = 11,841,197
+- breakdown sum = 11,830,976
+- dropped diff = 10,221
+
+这个问题不会解释“用量很大”，因为它是少算，不是多算。但它会让 Hermes 总量与 `ccusage` UI/CLI 报告不一致。
+
+Recommended fix:
+- 最稳妥：给 `usage_events` 增加 `reasoning_tokens` 或 `extra_tokens` 字段，并把 `usage_daily.total_tokens` 改成包含该字段。
+- 兼容性方案：同步器检测 `s.totalTokens - sum(modelBreakdowns)`，在单模型 session 中把 diff 记到 `output_tokens` 或新增一个 synthetic model row，并写清楚来源。多模型 session 需要明确分摊规则，不能静默丢弃。
+- 加单测覆盖 Hermes `reasoning_tokens` / `extra_total_tokens`。
+
+### P2 - Current dashboard metric is raw token traffic, not billable token usage
+
+Files:
+- `supabase/migrations/0007_usage_daily_berlin_tz.sql:18`
+- `apps/web/src/components/home/token-preview.tsx:66`
+- `packages/usage-daemons/openai-poller/index.ts:70`
+- `packages/usage-daemons/anthropic-poller/index.ts:75`
+
+`usage_daily.total_tokens` 当前计算为 `input_tokens + output_tokens + cache_read_tokens + cache_write_tokens`。这与 `ccusage` 的 raw token traffic 口径一致，也解释了为什么数值会很大：Claude、Codex、OpenClaw 的 cache read 都占绝大部分。
+
+如果你想回答“实际消耗了多少上下文/模型处理量”，当前口径是合理的；如果你想回答“这相当于多少 billable usage / 真实花费”，当前 token 图会显著高于非缓存 input/output 口径。Spend 也不是完整账单口径，因为 org pollers 仍写 `cost_usd: 0`。
+
+Recommended fix:
+- UI 上拆成至少两个指标：`Raw tokens` 和 `Non-cache tokens`，Spend 标注为 estimated/known spend。
+- 后续接入 OpenAI costs API 与 Anthropic cost report 后，再把 spend 当成账单级指标展示。
+
+### P2 - No-timestamp Hermes/OpenCode API sessions have stable totals but approximate day attribution
+
+Files:
+- `packages/usage-daemons/ccusage-sync/index.ts:100`
+- `packages/usage-daemons/ccusage-sync/index.ts:123`
+- `packages/usage-daemons/ccusage-sync/index.ts:176`
+- `packages/usage-daemons/ccusage-sync/state.ts:12`
+
+当前逻辑会为没有可解析时间的 session 分配 first-seen timestamp，并持久化到 `~/.token-sync/state.json`。这避免了每小时重新落到 "now" 造成重复漂移，当前实现是合理的。
+
+剩余风险是日归属不准确：远端 Hermes 有 9 个 `api-<hex>` session 没有嵌入时间，本机会看到 8 个 OpenCode 类 session 无可用时间。它们的总量不会因此重复，但会落在“首次同步看到它们”的那一天。历史回填或跨天 API-mode session 会影响 daily chart。
+
+Recommended fix:
+- 如果 Hermes/OpenCode 原始数据里可以拿到 started_at/created_at，优先从源头补时间。
+- UI 或报告中把这类 fallback session 的数量暴露出来，避免误读单日峰值。
+
+### P2 - Ingest schema still permits null session IDs for custom sources
+
+Files:
+- `apps/web/src/app/api/usage/ingest/route.ts:23`
+- `apps/web/src/app/api/usage/ingest/route.ts:56`
+- `supabase/migrations/0006_dedup_org_pollers.sql:21`
+- `supabase/migrations/0006_dedup_org_pollers.sql:50`
+
+已修复的 OpenAI/Anthropic poller 现在都会生成 deterministic non-null `session_id`，重复轮询不会再膨胀。数据库约束也已扩展为 `(source, session_id, model)`。
+
+但 route schema 仍允许 `session_id: null`。Postgres unique constraint 仍会把 `NULL` 当成互不相等，所以任何未来 custom source 如果传 null，就可能恢复旧的重复插入问题。
+
+Recommended fix:
+- production ingest 直接拒绝 `session_id: null`，或按 source 类型走不同 schema。
+- 如果必须兼容 null，增加表达式唯一索引或在 route 中为 null session 生成 deterministic id。
+
+### P3 - Token calculation edge cases lack local automated tests
+
+Files:
+- `packages/usage-daemons/ccusage-sync/index.ts:100`
+- `packages/usage-daemons/ccusage-sync/index.ts:161`
+- `apps/web/src/lib/date/local-tz.ts:23`
+
+`ccusage-sync` 目前没有测试覆盖高风险映射逻辑。建议至少覆盖：
+- Codex `YYYY/MM/DD/...` period timestamp fallback。
+- Hermes `YYYYMMDD_HHMMSS_...` period timestamp fallback。
+- `api-<hex>` first-seen timestamp 持久化。
+- multi-model session breakdown 合计。
+- `totalTokens > sum(modelBreakdowns)` 时的 extra/reasoning token 处理。
+- Berlin DST 边界下 `localDateNDaysAgo` 的滚动窗口是否仍是“本地日历天”，而不是固定 24h instant。
+
+### Verified OK In This Follow-up
+
+- 本机 Claude Code/Codex/OpenCode 的 `ccusage` session totals 与 breakdown 合计一致，未发现项目侧重复计算。
+- 远端 OpenClaw totals 与 breakdown 合计一致，未发现 OpenClaw 自身或项目映射导致的重复计算。
+- OpenAI/Anthropic org poller 的 deterministic `session_id` 已经解决早期 null-session 重复插入风险。
+- 当前大 token 数主要由 cache read 驱动；这是当前 raw-token 口径的预期结果，不是导入层 double count。
+
+References checked:
+- `ccusage` v20.0.4 source tag: https://github.com/ryoppippi/ccusage/tree/v20.0.4
+- Relevant source files reviewed locally from that tag: `rust/crates/ccusage/src/types.rs`, `utils.rs`, `adapter/all.rs`, `adapter/codex.rs`, `adapter/hermes.rs`, `adapter/openclaw.rs`.
+
+## Original 2026-05-25 Findings (Historical)
+
+The findings below are the original V1 review record. Token-usage findings that conflict with the 2026-05-28 addendum should be treated as superseded by the addendum above; several of the earlier usage-chain issues have since been fixed in code and migrations.
 
 ### P1 - Org usage pollers are still not idempotent when `session_id` is null
 
@@ -191,6 +348,10 @@ Commands run against the current worktree:
 - `packages/usage-daemons`: TypeScript `tsc --noEmit` passed.
 - `apps/web`: `next build` failed under sandboxed network because Google Fonts could not be fetched, then passed when network access was allowed.
 - Token usage follow-up: manually reviewed ingest/upsert semantics, `usage_daily` formulas, `getUsageSummary`, `/api/usage/stats`, `TokenPreview`/`TokenChart`, and all three usage daemons. No dedicated automated tests currently cover these usage calculation edge cases.
+- 2026-05-28 Token Usage follow-up: compared local `ccusage` v20.0.4 session totals against model breakdown sums; mismatch = 0.
+- 2026-05-28 Token Usage follow-up: compared remote cortana-box `ccusage` v20.0.4 session totals against model breakdown sums; OpenClaw/Codex/Claude mismatch = 0, Hermes diff = 10,221 reasoning/extra tokens.
+- 2026-05-28 Token Usage follow-up: cloned and inspected `ryoppippi/ccusage` tag `v20.0.4` source locally to confirm cache and extra-token aggregation behavior.
+- 2026-05-28 Hermes profile follow-up: inspected `ccusage` Hermes adapter source and Hermes Agent profile implementation; built a minimal two-DB repro proving named profiles are not counted unless `HERMES_HOME` explicitly includes each profile directory.
 
 ## Notes
 
