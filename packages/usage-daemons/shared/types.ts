@@ -15,6 +15,12 @@ export interface UsageEvent {
   output_tokens: number;
   cache_read_tokens?: number;
   cache_write_tokens?: number;
+  /**
+   * Extra/reasoning tokens reported by sources like ccusage's `extra_total_tokens`
+   * (Hermes / o1 / o3 reasoning models). Optional because most sources don't
+   * report this separately. Folded into "active tokens" downstream.
+   */
+  reasoning_tokens?: number;
   cost_usd: number;
   session_id?: string | null;
   project_path?: string | null;

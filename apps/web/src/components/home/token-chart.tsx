@@ -81,8 +81,10 @@ export function TokenChart({ daily, todayStr }: TokenChartProps) {
   }, [daily.length]);
 
   // Y-axis max recalculated for the visible window (per-window normalization).
+  // We normalize on ACTIVE tokens so the headline metric drives the visual scale;
+  // cache reads ride along as a faded background, not as a height contributor.
   const visibleSlice = daily.slice(visStart, visStart + WINDOW_DAYS);
-  const maxTokens = Math.max(1, ...visibleSlice.map((d) => d.totalTokens));
+  const maxActive = Math.max(1, ...visibleSlice.map((d) => d.activeTokens));
 
   if (daily.length === 0) {
     return (
@@ -108,7 +110,7 @@ export function TokenChart({ daily, todayStr }: TokenChartProps) {
             <Bar
               key={d.day}
               point={d}
-              maxTokens={maxTokens}
+              maxActive={maxActive}
               isToday={d.day === todayStr}
             />
           ))}
@@ -141,37 +143,53 @@ export function TokenChart({ daily, todayStr }: TokenChartProps) {
 
 interface BarProps {
   point: DailyPoint;
-  maxTokens: number;
+  maxActive: number;
   isToday: boolean;
 }
 
-function Bar({ point, maxTokens, isToday }: BarProps) {
-  const rawPct = maxTokens > 0 ? (point.totalTokens / maxTokens) * 100 : 0;
-  const totalHeightPct = point.totalTokens > 0 ? Math.max(MIN_VISIBLE_PCT, rawPct) : 0;
+function Bar({ point, maxActive, isToday }: BarProps) {
+  const rawPct = maxActive > 0 ? (point.activeTokens / maxActive) * 100 : 0;
+  const activeHeightPct = point.activeTokens > 0 ? Math.max(MIN_VISIBLE_PCT, rawPct) : 0;
+
+  // Cache reads are shown as a faint marker on the side of the bar so the
+  // viewer can intuitively see "efficient day" (lots of cache hits) without
+  // having cache_read inflate the bar height. We cap the marker length at
+  // 100% of bar height even when cache >> active.
+  const cacheRatio = point.activeTokens > 0
+    ? Math.min(1, point.cacheReadTokens / point.activeTokens)
+    : 0;
+  const cacheMarkerHeightPct = activeHeightPct * cacheRatio;
+
   const platforms = Object.entries(point.byPlatform).sort(
     ([a], [b]) => PLATFORM_STACK_ORDER.indexOf(a) - PLATFORM_STACK_ORDER.indexOf(b),
   );
 
   const breakdownLines = platforms.map(([p, t]) => `${labelFor(p)}: ${formatTokens(t)}`).join('\n');
-  const tooltip = `${point.day}\nTotal: ${formatTokens(point.totalTokens)}\n${breakdownLines}\nCost: ${formatUsd(point.costUsd)}`;
+  const tooltip =
+    `${point.day}\n` +
+    `Active: ${formatTokens(point.activeTokens)}\n` +
+    `${breakdownLines}\n` +
+    `Cache reads: ${formatTokens(point.cacheReadTokens)}\n` +
+    `API-rate value: ${formatUsd(point.apiRateValueUsd)}`;
 
   return (
     <div
-      className="group relative flex flex-col items-stretch"
+      className="group relative flex items-end gap-[2px]"
       style={{ width: `${BAR_WIDTH}px`, flexShrink: 0, height: '100%' }}
       title={tooltip}
     >
-      <div className="relative flex h-full w-full flex-col-reverse">
+      {/* Primary stacked active-tokens bar */}
+      <div className="relative flex h-full flex-1 flex-col-reverse">
         <div
           className="flex w-full flex-col-reverse transition-[height] duration-200 ease-out"
-          style={{ height: `${totalHeightPct}%` }}
+          style={{ height: `${activeHeightPct}%` }}
         >
-          {point.totalTokens > 0 ? (
+          {point.activeTokens > 0 ? (
             platforms.map(([platform, tokens]) => (
               <div
                 key={platform}
                 style={{
-                  height: `${(tokens / point.totalTokens) * 100}%`,
+                  height: `${(tokens / point.activeTokens) * 100}%`,
                   background: colorFor(platform),
                 }}
                 className="w-full"
@@ -182,6 +200,17 @@ function Bar({ point, maxTokens, isToday }: BarProps) {
           )}
         </div>
       </div>
+
+      {/* Cache-read sidecar: thin faded column, height scaled relative to
+          active bar (capped at 100%) — communicates "cache hit volume" as
+          a complementary signal without inflating headline height. */}
+      {point.cacheReadTokens > 0 && (
+        <div
+          className="w-[3px] bg-[var(--color-border)] opacity-50 transition-[height] duration-200 ease-out"
+          style={{ height: `${cacheMarkerHeightPct}%` }}
+        />
+      )}
+
       {isToday && (
         <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[var(--color-accent)]" />
       )}

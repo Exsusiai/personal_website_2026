@@ -19,6 +19,10 @@ const eventSchema = z.object({
   output_tokens: z.number().int().nonnegative(),
   cache_read_tokens: z.number().int().nonnegative().optional(),
   cache_write_tokens: z.number().int().nonnegative().optional(),
+  // reasoning_tokens: ccusage's `extra_total_tokens` (Hermes / o1 / o3 etc.).
+  // The previous schema silently dropped this; we now persist it so it can be
+  // folded into the public "active tokens" metric.
+  reasoning_tokens: z.number().int().nonnegative().optional(),
   cost_usd: z.number().nonnegative(),
   session_id: z.string().nullable().optional(),
   project_path: z.string().nullable().optional(),

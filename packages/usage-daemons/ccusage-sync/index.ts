@@ -168,6 +168,7 @@ export function toEvents(
   const sessions = out.session ?? [];
   let synthesizedNow = 0;
   let synthesizedFromState = 0;
+  let extraTokensRecovered = 0;
 
   for (const s of sessions) {
     const sessionId = `${s.agent}:${s.period}`;
@@ -188,7 +189,52 @@ export function toEvents(
       }
     }
     const breakdowns = s.modelBreakdowns ?? [];
-    for (const m of breakdowns) {
+
+    // ccusage v20: session.totalTokens = sum(modelBreakdowns) + extra_total_tokens
+    // (reasoning / extended-thinking tokens for Hermes, Codex o1/o3, etc.).
+    // modelBreakdowns does NOT include extra_total_tokens, so naively summing
+    // breakdowns loses those tokens. We recover them as session-level diff:
+    const breakdownSum = breakdowns.reduce(
+      (acc, m) =>
+        acc +
+        m.inputTokens +
+        m.outputTokens +
+        (m.cacheReadTokens ?? 0) +
+        (m.cacheCreationTokens ?? 0),
+      0,
+    );
+    const sessionExtra = Math.max(0, (s.totalTokens ?? 0) - breakdownSum);
+    if (sessionExtra > 0) extraTokensRecovered += sessionExtra;
+
+    for (let i = 0; i < breakdowns.length; i++) {
+      const m = breakdowns[i];
+      // Distribute session-level extra across model rows proportionally to
+      // their output_tokens share (reasoning tokens correlate with output,
+      // not input/cache). For single-model sessions this just attaches the
+      // full extra to the only row. Fall back to even split if all outputs
+      // are zero (shouldn't normally happen).
+      let extraForRow = 0;
+      if (sessionExtra > 0 && breakdowns.length > 0) {
+        const totalOut = breakdowns.reduce((a, b) => a + b.outputTokens, 0);
+        if (totalOut > 0) {
+          extraForRow =
+            i === breakdowns.length - 1
+              ? // Assign whatever remains to the last row to avoid rounding loss.
+                sessionExtra -
+                breakdowns
+                  .slice(0, -1)
+                  .reduce(
+                    (a, b) => a + Math.floor((b.outputTokens / totalOut) * sessionExtra),
+                    0,
+                  )
+              : Math.floor((m.outputTokens / totalOut) * sessionExtra);
+        } else {
+          extraForRow =
+            i === breakdowns.length - 1
+              ? sessionExtra - Math.floor(sessionExtra / breakdowns.length) * (breakdowns.length - 1)
+              : Math.floor(sessionExtra / breakdowns.length);
+        }
+      }
       events.push({
         ts,
         device,
@@ -198,6 +244,7 @@ export function toEvents(
         output_tokens: m.outputTokens,
         cache_read_tokens: m.cacheReadTokens ?? 0,
         cache_write_tokens: m.cacheCreationTokens ?? 0,
+        reasoning_tokens: extraForRow,
         cost_usd: m.cost,
         session_id: sessionId,
         project_path: null,
@@ -214,6 +261,12 @@ export function toEvents(
   }
   if (synthesizedFromState > 0) {
     console.log(`[ccusage-sync] reused persisted fallback ts for ${synthesizedFromState} session(s)`);
+  }
+  if (extraTokensRecovered > 0) {
+    console.log(
+      `[ccusage-sync] recovered ${extraTokensRecovered} reasoning/extra tokens that would ` +
+      `otherwise be dropped by modelBreakdowns sum`,
+    );
   }
   return events;
 }
